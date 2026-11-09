@@ -1,0 +1,176 @@
+/* Rooms: full bleed stage with controls placed around the work */
+.room { position: relative; width: 100%; height: 100vh; overflow: hidden; background: var(--bg); }
+.room-stage { position: absolute; inset: 0; }
+.excalidraw-host { position: absolute; inset: 0; }
+.excalidraw-host .excalidraw { height: 100%; }
+
+/* Excalidraw skin: strict black and white, sharp corners */
+.excalidraw, .excalidraw.theme--dark {
+  --font-family: var(--font);
+  --border-radius-md: 10px; --border-radius-lg: 16px;
+  --island-bg-color: var(--surface);
+  --default-bg-color: var(--bg);
+  --default-border-color: var(--line);
+  --input-bg-color: var(--bg);
+  --input-border-color: var(--line-strong);
+  --input-hover-bg-color: var(--bg-muted);
+  --button-bg: var(--surface-2);
+  --button-hover-bg: var(--bg-muted);
+  --button-active-bg: var(--bg-muted);
+  --button-destructive-bg-color: var(--danger-soft);
+  --button-destructive-color: var(--danger);
+  --text-primary-color: var(--text);
+  --icon-fill-color: var(--text);
+  --color-primary: var(--ink);
+  --color-primary-darker: var(--ink-hover);
+  --color-primary-darkest: var(--ink-hover);
+  --color-primary-light: var(--bg-muted);
+  --color-primary-light-darker: var(--line);
+  --color-surface-lowest: var(--bg);
+  --color-surface-low: var(--surface-2);
+  --color-surface-mid: var(--surface);
+  --color-surface-high: var(--bg-muted);
+  --color-surface-primary-container: var(--ink);
+  --color-on-primary-container: var(--on-ink);
+  --color-brand-hover: var(--ink-hover);
+  --color-brand-active: var(--ink);
+  --color-selection: var(--ink);
+  --select-highlight-color: var(--ink);
+  --shadow-island: var(--float-shadow);
+  --popup-bg-color: var(--surface);
+  --popup-text-color: var(--text);
+  --popup-secondary-bg-color: var(--bg-muted);
+  --sidebar-bg-color: var(--surface);
+  --sidebar-border-color: var(--line);
+  --focus-highlight-color: var(--ink);
+}
+.excalidraw .Island, .excalidraw .dropdown-menu-container, .excalidraw .popover, .excalidraw .Modal__content, .excalidraw .sidebar, .excalidraw .Dialog { border-radius: 16px !important; border: 1px solid var(--line-strong); box-shadow: var(--float-shadow); }
+.excalidraw .ToolIcon__icon, .excalidraw .dropdown-menu-item, .excalidraw .buttonList label, .excalidraw .color-picker__button, .excalidraw .Stack_horizontal button { border-radius: 10px !important; }
+.excalidraw .App-menu_top .buttonList { gap: 2px; }
+.excalidraw .dropdown-menu-container { padding: 6px; background: var(--surface); }
+.excalidraw .dropdown-menu-item { min-height: 38px; font-family: var(--font); font-size: 14px; font-weight: 500; color: var(--text); }
+.excalidraw .dropdown-menu-item:hover { background: var(--bg-muted); }
+.excalidraw .dropdown-menu-item__icon { color: var(--text-3); }
+.excalidraw .dropdown-menu-item-base:hover .dropdown-menu-item__icon { color: var(--text); }
+.excalidraw .dropdown-menu-item { border-radius: 10px; }
+.excalidraw .dropdown-menu .dropdown-menu-item__shortcut { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+.excalidraw .dropdown-menu-group-title { font-family: var(--font); font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text-3); }
+.excalidraw .main-menu-trigger, .excalidraw .dropdown-menu-button { width: 40px; height: 40px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: none; }
+.excalidraw .main-menu-trigger:hover, .excalidraw .dropdown-menu-button:hover { border-color: var(--ink); background: var(--surface-2); }
+.excalidraw .layer-ui__wrapper__footer-left, .excalidraw .layer-ui__wrapper__footer-right { z-index: 3; }
+.excalidraw .layer-ui__wrapper__top-right { display: flex; align-items: center; gap: 10px; }
+
+/* Title pill beside the Excalidraw menu */
+.room-title { position: absolute; z-index: 12; top: 16px; left: 70px; display: flex; align-items: center; gap: 6px; max-width: min(280px, 22vw); height: 40px; border: 1px solid var(--line-strong); background: var(--surface); }
+.room-title.is-notes { left: 16px; max-width: min(420px, 40vw); padding-right: 6px; }
+.room-title .room-btn { border: 0; border-right: 1px solid var(--line); height: 38px; width: 38px; }
+.room-title-button { display: grid; align-content: center; min-width: 0; height: 100%; padding: 0 14px; border: 0; background: transparent; text-align: left; line-height: 1.15; }
+.room-title-button strong { overflow: hidden; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; text-overflow: ellipsis; white-space: nowrap; }
+.room-title-button span { color: var(--text-3); font: 600 11.5px var(--font); letter-spacing: 0; text-transform: none; }
+.room-title-button:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.room-title-input { width: 220px; height: 100%; padding: 0 14px; border: 0; outline: 0; background: transparent; font-size: 14px; font-weight: 700; color: var(--text); }
+.room-btn { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); }
+.room-btn:hover, .room-btn.is-active { border-color: var(--ink); color: var(--text); background: var(--surface-2); }
+
+/* Top right cluster */
+.room-topright { display: flex; align-items: center; gap: 8px; }
+.room-notes .room-topright { position: absolute; z-index: 12; top: 16px; right: 16px; }
+.room-share { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border: 1px solid var(--ink); background: var(--ink); color: var(--on-ink); font-size: 14px; font-weight: 700; }
+.room-share:hover { background: var(--ink-hover); }
+.room-viewonly { display: inline-flex; align-items: center; height: 40px; padding: 0 14px; border: 1px solid var(--line-strong); background: var(--surface); font: 600 11.5px var(--font); letter-spacing: 0; text-transform: none; }
+.room-sync { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: 600 11.5px var(--font); letter-spacing: 0; text-transform: none; white-space: nowrap; }
+.room-sync i { width: 7px; height: 7px; background: var(--text-3); }
+.room-sync.connected i { background: var(--ink); }
+.room-sync.error i { background: var(--danger); }
+.room-sync.connecting i { animation: hp-blink 1s ease-in-out infinite; }
+.room-avatars { display: flex; }
+.room-avatars span { display: grid; place-items: center; width: 32px; height: 32px; margin-left: -6px; border: 2px solid var(--bg); background: var(--avatar-color, var(--ink)); color: #fff; font-size: 12px; font-weight: 700; }
+.room-avatars span:first-child { margin-left: 0; }
+.room-avatars .room-avatar-more { background: var(--bg-muted); color: var(--text); }
+
+/* Right centre dock rail */
+.room-dock { position: absolute; z-index: 12; top: 50%; right: 16px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; padding: 4px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--float-shadow); transition: right .2s ease; }
+.room-board .room-stage:has(.excalidraw .sidebar) .room-dock { right: 336px; }
+.room-dock-btn { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: transparent; color: var(--text-2); }
+.room-dock-btn:hover:not(:disabled) { background: var(--bg-muted); color: var(--text); }
+.room-dock-btn.is-active { background: var(--ink); color: var(--on-ink); }
+.room-dock-btn:disabled { opacity: .35; }
+.room-dock-btn b { position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; background: var(--ink); color: var(--on-ink); font: 600 10px/16px var(--mono); text-align: center; outline: 2px solid var(--surface); }
+.room-dock-btn.is-active b { background: var(--on-ink); color: var(--ink); outline-color: var(--ink); }
+.room-dock-sep { height: 1px; margin: 3px 6px; background: var(--line); }
+
+/* Bottom status pill (also lives in the Excalidraw footer slot) */
+.room-status { display: inline-flex; align-items: center; gap: 0; height: 40px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: 600 11.5px var(--font); letter-spacing: 0; text-transform: none; white-space: nowrap; }
+.room-status-item { display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 12px; }
+.room-status-item + .room-status-item { border-left: 1px solid var(--line); }
+.room-status-dim { color: var(--text-3); }
+.room-status i.is-error { width: 7px; height: 7px; background: var(--danger); }
+.room-notes .room-status { position: absolute; z-index: 12; left: 16px; bottom: 16px; }
+.excalidraw .layer-ui__wrapper__footer .room-status { margin-left: 8px; }
+
+/* Floating tool panels (Project, Agent, Studio) */
+.sheet-scrim { position: fixed; z-index: 40; inset: 0; border: 0; background: var(--backdrop); backdrop-filter: blur(3px); cursor: default; animation: arc-fade .2s ease-out; }
+.room-panel { position: fixed; z-index: 41; top: 12px; bottom: 12px; right: 12px; width: min(50vw, 780px); min-width: min(460px, calc(100vw - 24px)); display: flex; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--pop-shadow); animation: sheet-in .3s cubic-bezier(.2, .8, .2, 1); }
+.room-panel > aside { width: 100% !important; min-width: 0 !important; max-width: none !important; flex: 1 1 auto !important; height: 100%; border: 0 !important; box-shadow: none !important; position: relative !important; inset: auto !important; }
+
+.room-banner { position: absolute; z-index: 20; left: 50%; bottom: 72px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid var(--danger); background: var(--surface); color: var(--danger); font-size: 13px; font-weight: 600; }
+.presentation-exit-bar { position: absolute; z-index: 30; top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 6px 6px 6px 16px; background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 600; box-shadow: var(--pop-shadow); }
+.presentation-exit-bar button { height: 32px; padding: 0 14px; border: 0; background: var(--on-ink); color: var(--ink); font-weight: 700; }
+.room.is-presenting .room-title, .room.is-presenting .room-dock, .room.is-presenting .room-panel { display: none; }
+
+/* Notes room: keep the library clear of the floating clusters */
+.room-notes .room-stage .nt { position: absolute; inset: 0; }
+.room-notes .nt-bar { padding-right: 330px; }
+
+@media (max-width: 1100px) {
+  .room-title { max-width: 150px; }
+  .room-sync { display: none; }
+}
+@media (max-width: 700px) {
+  .room-dock { top: auto; bottom: 72px; right: 12px; transform: none; flex-direction: row; }
+  .room-dock-btn { width: 40px; height: 40px; }
+  .room-panel { inset: 12px; width: auto; }
+  .room-title { display: none; }
+  .room-title.is-notes { display: flex; }
+  .room-notes .nt-bar { padding-right: 16px; margin-top: 56px; }
+  .room-avatars { display: none; }
+}
+
+.nt-input:focus-visible, .nt-title:focus-visible, .room-title-input:focus-visible { outline: none; }
+.nt-count { left: auto; right: 28px; }
+
+/* Rounded chrome */
+.room-title, .room-btn, .room-share, .room-viewonly, .room-sync, .room-status, .room-banner { border-radius: 14px; }
+.room-title { overflow: hidden; }
+.room-title .room-btn { border-radius: 0; }
+.room-dock { border-radius: 20px; padding: 6px; gap: 4px; }
+.room-dock-btn { border-radius: 14px; }
+.room-dock-btn b { border-radius: 99px; outline-width: 2px; }
+.room-avatars span { border-radius: 50%; }
+.presentation-exit-bar { border-radius: 16px; }
+.presentation-exit-bar button { border-radius: 10px; }
+.room-status i.is-error, .room-sync i { border-radius: 50%; }
+
+/* Hide the stock Excalidraw toolbar. Our own tool bar replaces it. */
+.room-board .excalidraw .shapes-section { display: none !important; }
+.room-board .excalidraw .App-toolbar-container { display: none !important; }
+
+/* Product tool bar */
+.room-tools { position: absolute; z-index: 12; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 6px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); box-shadow: var(--pop-shadow); }
+.room-tool { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 15px; background: transparent; color: var(--text-2); transition: background-color .14s ease, color .14s ease, transform .1s ease; }
+.room-tool:hover { background: var(--bg-muted); color: var(--text); }
+.room-tool:active { transform: scale(.94); }
+.room-tool.is-active { background: var(--ink); color: var(--on-ink); }
+.room-tool[data-tip]::after { right: auto; left: 50%; top: auto; bottom: calc(100% + 12px); transform: translateX(-50%); }
+.room-tools-sep { width: 1px; height: 24px; margin: 0 6px; background: var(--line-strong); }
+.room-board .layer-ui__wrapper__footer-left { bottom: 20px; }
+.excalidraw .zoom-actions, .excalidraw .undo-redo-buttons .ToolIcon, .excalidraw .undo-button-container .ToolIcon { border-radius: 12px; }
+.room.is-presenting .room-tools { display: none; }
+@media (max-width: 900px) { .room-tool { width: 38px; height: 38px; } .room-tools { bottom: 74px; } }
+
+.room-board .excalidraw .App-menu_top { justify-content: space-between; }
+.room-board .excalidraw .layer-ui__wrapper__top-right { margin-left: auto; }
+.room-board .room-status-dim, .room-board .room-status-item:nth-child(2) { display: none; }
+.room-board .excalidraw .FixedSideContainer_side_top { width: calc(100% - 32px); }
+.room-board .excalidraw .App-menu_top { display: flex !important; width: 100%; }
+.room-board .excalidraw .App-menu_top__left { flex: 0 0 auto; }

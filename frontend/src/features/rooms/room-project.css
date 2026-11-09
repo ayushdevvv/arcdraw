@@ -1,0 +1,113 @@
+.room-project-panel {
+  width: min(570px, 47vw);
+  min-width: 420px;
+  flex: 0 0 min(570px, 47vw);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--line);
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.project-panel-head { padding: 27px 28px 19px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--surface) 0%, var(--bg-subtle) 100%); }
+.project-panel-title-row { display: flex; align-items: center; gap: 12px; }
+.project-panel-icon { width: 39px; height: 39px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg-muted); color: var(--text-2); }
+.project-panel-eyebrow { margin: 0 0 3px; color: var(--text-3); font: 11px/1.2 var(--mono); letter-spacing: .13em; }
+.project-panel-title-row h2 { margin: 0; color: var(--text); font-size: 22px; line-height: 1.15; letter-spacing: -.055em; }
+.project-panel-close { margin-left: auto; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--text-2); cursor: pointer; }
+.project-panel-close:hover { color: var(--text); border-color: var(--line-strong); }
+.project-panel-description { margin: 13px 0 18px; color: var(--text-3); font-size: 13px; line-height: 1.65; }
+.project-progress-card { padding: 15px 16px 13px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.project-progress-meta,.project-progress-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.project-progress-meta { color: var(--text-2); font-size: 12.5px; }
+.project-progress-meta strong { color: var(--text-2); font-size: 14px; font-variant-numeric: tabular-nums; }
+.project-progress-track { height: 6px; margin: 11px 0 9px; overflow: hidden; border-radius: var(--r); background: var(--bg-muted); }
+.project-progress-track > span { display: block; height: 100%; border-radius: var(--r); background: var(--ink); transition: width .2s ease; }
+.project-progress-foot { color: var(--text-3); font-size: 11px; }
+.project-panel-toolbar { min-height: 58px; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); background: var(--bg-subtle); }
+.project-panel-tabs { display: flex; align-items: center; gap: 4px; }
+.project-panel-tabs button { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid transparent; border-radius: var(--r); background: transparent; color: var(--text-3); font-size: 12px; cursor: pointer; }
+.project-panel-tabs button span { color: var(--text-3); font: 11px var(--mono); }
+.project-panel-tabs button.active { border-color: var(--line); background: var(--surface); color: var(--text); box-shadow:var(--float-shadow); }
+.project-add-button { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 11px; border: 1px solid var(--ink); border-radius: var(--r); background: var(--ink); color: var(--on-ink); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.project-add-button:hover,.project-save-button:hover { background: var(--ink); }
+.project-items-list { min-height: 0; flex: 1; overflow: auto; padding: 17px 22px 24px; }
+.project-task-card,.project-milestone-card { margin-bottom: 11px; padding: 15px 16px 13px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); box-shadow:var(--float-shadow); }
+.project-task-card.is-done { background: var(--surface); }
+.project-task-main { display: flex; align-items: flex-start; gap: 10px; }
+.project-status { min-height: 27px; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-subtle); color: var(--text-2); font-size: 11px; cursor: pointer; }
+.project-status:disabled { cursor: default; }
+.project-status-in-progress { border-color: var(--line-strong); background: var(--bg-subtle); color: var(--text-2); }
+.project-status-done { border-color: var(--line-strong); background: var(--bg-muted); color: var(--text-2); }
+.project-task-copy { min-width: 0; flex: 1; }
+.project-task-copy h3,.project-milestone-copy h3 { margin: 3px 0 0; color: var(--text); font-size: 13px; line-height: 1.4; font-weight: 650; }
+.project-task-card.is-done .project-task-copy h3 { color: var(--text-3); text-decoration: line-through; }
+.project-task-copy p { margin: 5px 0 0; color: var(--text-3); font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.project-item-edit { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--text-3); cursor: pointer; }
+.project-item-edit:hover { color: var(--text); border-color: var(--line-strong); }
+.project-task-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0 0 37px; color: var(--text-3); font-size: 11px; }
+.project-task-meta > span { display: inline-flex; align-items: center; gap: 5px; }
+.project-priority { text-transform: capitalize; }
+.project-priority.priority-high { color: var(--text-2); }
+.project-priority.priority-low { color: var(--text-3); }
+.project-assignee > span { width: 17px; height: 17px; display: grid; place-items: center; border-radius: var(--r); background: var(--bg-muted); color: var(--text-2); font-size: 11px; }
+.project-milestone-chip { max-width: 170px; overflow: hidden; color: var(--text-2); text-overflow: ellipsis; white-space: nowrap; }
+.project-linked-reference { max-width: calc(100% - 37px); min-height: 29px; display: flex; align-items: center; gap: 7px; margin: 11px 0 0 37px; padding: 0 9px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-subtle); color: var(--text-2); text-align: left; font-size: 11px; cursor: pointer; }
+.project-linked-reference > span { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.project-linked-reference:hover { border-color: var(--line-strong); background: var(--bg-muted); }
+.project-task-actions { display: flex; align-items: center; gap: 15px; margin: 11px 0 0 37px; padding-top: 10px; border-top: 1px solid var(--line); }
+.project-task-actions button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--text-2); font-size: 11px; cursor: pointer; }
+.project-task-actions .project-delete-action { color: var(--text-2); }
+.project-milestone-head { display: flex; align-items: center; gap: 10px; }
+.project-milestone-icon { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-muted); color: var(--text-2); }
+.project-milestone-copy { flex: 1; min-width: 0; }
+.project-milestone-copy h3 { margin-top: 0; }
+.project-milestone-copy p { margin: 3px 0 0; color: var(--text-3); font-size: 11px; }
+.project-milestone-description { margin: 10px 0 0; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.milestone-track { margin-top: 13px; }
+.project-empty-state { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.project-empty-state > div { width: 43px; height: 43px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-muted); color: var(--text-2); }
+.project-empty-state h3 { margin: 13px 0 5px; color: var(--text); font-size: 14px; letter-spacing: -.02em; }
+.project-empty-state p { max-width: 240px; margin: 0; color: var(--text-3); font-size: 12px; line-height: 1.7; }
+.project-empty-state button { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--text-2); font-size: 12px; cursor: pointer; }
+.project-panel-foot { min-height: 33px; display: flex; align-items: center; gap: 7px; padding: 0 24px; border-top: 1px solid var(--line); color: var(--text-3); font: 11px var(--mono); letter-spacing: .09em; }
+.project-foot-dot { width: 5px; height: 5px; border-radius: var(--r); background: var(--text-2); }
+.project-item-form { margin: 15px 21px 0; padding: 17px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); box-shadow:var(--float-shadow); }
+.project-form-topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; color: var(--text-3); font: 11px var(--mono); letter-spacing: .11em; }
+.project-form-topline button { width: 25px; height: 25px; display: grid; place-items: center; border: 0; border-radius: var(--r); background: var(--surface-2); color: var(--text-3); cursor: pointer; }
+.project-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; margin-bottom: 11px; }
+.project-field > span { display: flex; align-items: center; gap: 5px; color: var(--text-2); font-size: 11px; font-weight: 600; }
+.project-field input,.project-field textarea,.project-field select { width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); outline: 0; background: var(--surface); color: var(--text); font-family: inherit; font-size: 12px; line-height: 1.5; }
+.project-field textarea { resize: vertical; min-height: 58px; }
+.project-field input:focus,.project-field textarea:focus,.project-field select:focus { border-color: var(--line-strong); background: var(--surface); box-shadow:var(--float-shadow); }
+.project-field input::placeholder,.project-field textarea::placeholder { color: var(--text-3); }
+.project-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+.project-field-full { grid-column: 1 / -1; }
+.project-link-fields { margin-top: 4px; padding: 12px 12px 1px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-subtle); }
+.project-link-heading { display: flex; align-items: center; gap: 6px; margin: 0 0 11px; color: var(--text-2); font-size: 11px; font-weight: 650; }
+.project-link-fields .project-field { margin-bottom: 10px; }
+.project-inline-link { margin: -3px 0 11px; padding: 0; border: 0; background: transparent; color: var(--text-2); font-size: 11px; cursor: pointer; }
+.project-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.project-cancel-button,.project-save-button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: var(--r); font-size: 12px; cursor: pointer; }
+.project-cancel-button { border: 1px solid var(--line); background: var(--surface); color: var(--text-2); }
+.project-save-button { border: 1px solid var(--ink); background: var(--ink); color: var(--on-ink); }
+.project-save-button:disabled { opacity: .45; cursor: not-allowed; }
+.project-confirm-backdrop { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 20px; background: var(--ink); backdrop-filter: blur(5px); }
+.project-confirm-dialog { width: min(100%, 340px); padding: 22px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); box-shadow: 0 20px 60px #0002; }
+.project-confirm-dialog h3 { margin: 0; color: var(--text); font-size: 16px; letter-spacing: -.04em; }
+.project-confirm-dialog p { margin: 8px 0 19px; color: var(--text-3); font-size: 12.5px; line-height: 1.65; }
+.project-confirm-dialog > div { display: flex; justify-content: flex-end; gap: 8px; }
+.project-confirm-dialog button { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; padding: 0 11px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--text-2); font-size: 12px; cursor: pointer; }
+.project-confirm-dialog button:last-child { border-color: var(--line-strong); background: var(--surface-2); color: var(--text-2); }
+
+@media (max-width: 1100px) {
+  .room-project-panel { width: 440px; min-width: 390px; flex-basis: 440px; }
+}
+@media (max-width: 700px) {
+  .room-project-panel { position: absolute; z-index: 60; inset: 0 0 0 auto; width: min(100%, 560px); min-width: 0; flex-basis: auto; box-shadow:var(--float-shadow); }
+  .project-panel-head { padding: 20px 18px 15px; }
+  .project-panel-toolbar { padding-inline: 15px; }
+  .project-items-list { padding-inline: 14px; }
+  .project-item-form { margin-inline: 13px; }
+}

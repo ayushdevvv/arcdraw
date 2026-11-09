@@ -1,0 +1,50 @@
+/* Toasts use fixed colors so they stay readable on both themes. */
+.arc-toaster {
+  position: fixed; z-index: 2000; left: 50%; bottom: 92px; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+  width: min(440px, calc(100vw - 24px)); pointer-events: none;
+}
+.arc-toast {
+  pointer-events: auto; display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 12px 12px 14px; border: 1px solid #2c2c2c; border-left-width: 4px; border-radius: 0;
+  background: #111111; color: #f5f5f5; box-shadow: 0 14px 36px -12px rgba(0, 0, 0, .55);
+  font-size: 14px; line-height: 1.4; animation: arc-toast-in .2s cubic-bezier(.2, .8, .2, 1);
+}
+.arc-toast-success { border-left-color: #22c55e; }
+.arc-toast-error { border-left-color: #ef4444; }
+.arc-toast-warning { border-left-color: #f59e0b; }
+.arc-toast-info { border-left-color: #3b82f6; }
+.arc-toast-loading { border-left-color: #9ca3af; }
+.arc-toast-icon { display: grid; place-items: center; height: 20px; flex: 0 0 auto; }
+.arc-toast-success .arc-toast-icon { color: #22c55e; }
+.arc-toast-error .arc-toast-icon { color: #ef4444; }
+.arc-toast-warning .arc-toast-icon { color: #f59e0b; }
+.arc-toast-info .arc-toast-icon { color: #60a5fa; }
+.arc-toast-loading .arc-toast-icon { color: #d1d5db; }
+.arc-toast-body { flex: 1; min-width: 0; }
+.arc-toast-message { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.arc-toast-description { margin: 3px 0 0; color: #b4b4b4; font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
+.arc-toast-count {
+  display: inline-block; margin-left: 8px; padding: 0 6px; background: #2c2c2c; color: #e5e5e5;
+  font-size: 11px; font-weight: 700; line-height: 18px;
+}
+.arc-toast-action {
+  flex: 0 0 auto; height: 28px; padding: 0 12px; border: 1px solid #f5f5f5; border-radius: 0; background: #f5f5f5; color: #0a0a0a;
+  font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.arc-toast-action:hover { background: #ffffff; }
+.arc-toast-close {
+  flex: 0 0 auto; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 0; background: transparent;
+  color: #9a9a9a; cursor: pointer;
+}
+.arc-toast-close:hover { background: #2c2c2c; color: #ffffff; }
+.arc-toast-spin { animation: arc-toast-spin 0.9s linear infinite; }
+@keyframes arc-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes arc-toast-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  .arc-toaster { bottom: 84px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arc-toast { animation: none; }
+  .arc-toast-spin { animation-duration: 2s; }
+}
