@@ -2,8 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   getCurrentUser,
   login as loginRequest,
-  logout as logoutRequest,
-  refreshSession
+  logout as logoutRequest
 } from "../services/authService.js";
 
 const AuthContext = createContext(null);
@@ -15,8 +14,8 @@ function bootstrapAccountSession() {
       try {
         return await getCurrentUser();
       } catch (error) {
-        if (error.status !== 401) throw error;
-        return refreshSession();
+        if (error.status === 401) return { user: null };
+        throw error;
       }
     })().finally(() => {
       authBootstrapPromise = null;

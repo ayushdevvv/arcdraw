@@ -1,22 +1,6 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1").replace(/\/$/, "");
 const REQUEST_TIMEOUT_MS = 45000;
 
-// The access cookie lives 15 minutes. After that the browser stops sending it,
-// so the API answers 401 "Authentication required" even though the UI still
-// looks signed in. We transparently rotate the session with the refresh cookie
-// and retry the request once. Concurrent 401s share a single refresh call.
-let refreshInFlight = null;
-
-function refreshAccessSession() {
-  if (!refreshInFlight) {
-    refreshInFlight = fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include" })
-      .then((response) => response.ok)
-      .catch(() => false)
-      .finally(() => { refreshInFlight = null; });
-  }
-  return refreshInFlight;
-}
-
 function makeError(message, extra) {
   const error = new Error(message);
   Object.assign(error, extra);
@@ -51,13 +35,7 @@ export async function apiRequest(path, options = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  let response = await send(path, options, headers);
-
-  // Never retry auth endpoints themselves (bad password, dead refresh token, etc.).
-  const isAuthRoute = /^\/?auth\//.test(path);
-  if (response.status === 401 && !isAuthRoute && (await refreshAccessSession())) {
-    response = await send(path, options, headers);
-  }
+  const response = await send(path, options, headers);
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

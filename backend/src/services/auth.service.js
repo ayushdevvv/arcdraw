@@ -6,7 +6,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { hashToken } from "../utils/crypto.js";
 import { createOtp, hashOtp, verifyOtpHash, OTP_TTL_MINUTES, OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_SECONDS } from "../utils/otp.js";
 import { toPublicUser } from "../utils/user.dto.js";
-import { createAccessToken, createRefreshToken } from "./token.service.js";
+import { createAccessToken } from "./token.service.js";
 import { sendPasswordResetOtpEmail, sendVerificationOtpEmail } from "./mail.service.js";
 
 const OTP_TTL_MS = OTP_TTL_MINUTES * 60 * 1000;
@@ -19,21 +19,10 @@ function getSessionMetadata(metadata = {}) {
   };
 }
 
-async function createSession(user, metadata) {
-  const { token: refreshToken, tokenHash } = createRefreshToken();
-  const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
-
-  await RefreshSession.create({
-    user: user._id,
-    tokenHash,
-    expiresAt,
-    ...getSessionMetadata(metadata)
-  });
-
+async function createSession(user) {
   return {
     user: toPublicUser(user),
-    accessToken: createAccessToken(user._id),
-    refreshToken
+    accessToken: createAccessToken(user._id)
   };
 }
 
@@ -195,82 +184,9 @@ export async function createSessionForUser(user, metadata) {
   return createSession(user, metadata);
 }
 
-export async function rotateRefreshSession(rawRefreshToken, metadata) {
-  if (!rawRefreshToken) {
-    throw new ApiError(401, "Refresh session is missing", "REFRESH_TOKEN_MISSING");
-  }
-
-  const tokenHash = hashToken(rawRefreshToken);
-  const oldSession = await RefreshSession.findOne({ tokenHash }).select("+tokenHash");
-  if (!oldSession) {
-    throw new ApiError(401, "Refresh session is invalid or expired", "REFRESH_TOKEN_INVALID");
-  }
-
-  if (oldSession.revokedAt) {
-    await RefreshSession.updateMany(
-      { user: oldSession.user, revokedAt: null },
-      { $set: { revokedAt: new Date() } }
-    );
-    throw new ApiError(401, "Refresh token reuse detected. Please sign in again.", "REFRESH_TOKEN_REUSE");
-  }
-
-  if (oldSession.expiresAt <= new Date()) {
-    oldSession.revokedAt = new Date();
-    await oldSession.save();
-    throw new ApiError(401, "Refresh session has expired", "REFRESH_TOKEN_EXPIRED");
-  }
-
-  const user = await User.findById(oldSession.user);
-  if (!user) {
-    oldSession.revokedAt = new Date();
-    await oldSession.save();
-    throw new ApiError(401, "Account no longer exists", "USER_NOT_FOUND");
-  }
-
-  const next = createRefreshToken();
-  const now = new Date();
-  const claimed = await RefreshSession.findOneAndUpdate(
-    { _id: oldSession._id, revokedAt: null, expiresAt: { $gt: now } },
-    { $set: { revokedAt: now, replacedByTokenHash: next.tokenHash } },
-    { new: true }
-  );
-
-  if (!claimed) {
-    await RefreshSession.updateMany(
-      { user: user._id, revokedAt: null },
-      { $set: { revokedAt: new Date() } }
-    );
-    throw new ApiError(401, "Refresh session was already used. Please sign in again.", "REFRESH_TOKEN_REUSE");
-  }
-
-  await RefreshSession.create({
-    user: user._id,
-    tokenHash: next.tokenHash,
-    expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000),
-    ...getSessionMetadata(metadata)
-  });
-
-  return {
-    user: toPublicUser(user),
-    accessToken: createAccessToken(user._id),
-    refreshToken: next.token
-  };
-}
-
-export async function revokeRefreshSession(rawRefreshToken) {
-  if (!rawRefreshToken) return;
-  await RefreshSession.updateOne(
-    { tokenHash: hashToken(rawRefreshToken), revokedAt: null },
-    { $set: { revokedAt: new Date() } }
-  );
-}
-
-export async function revokeAllSessions(userId) {
-  await RefreshSession.updateMany(
-    { user: userId, revokedAt: null },
-    { $set: { revokedAt: new Date() } }
-  );
-}
+// Single long-lived login cookie: nothing to rotate or revoke server-side.
+export async function revokeRefreshSession() {}
+export async function revokeAllSessions() {}
 
 export async function getUserById(userId) {
   const user = await User.findById(userId);

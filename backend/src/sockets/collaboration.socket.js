@@ -137,7 +137,7 @@ export function attachCollaborationSocket(httpServer, env) {
       socket.data.shareExpiryTimers = new Map();
       return next();
     } catch {
-      return next(new Error("Your session expired. Sign in again."));
+      return next(new Error("Sign in to collaborate."));
     }
   });
 

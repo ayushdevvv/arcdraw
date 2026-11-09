@@ -7,7 +7,7 @@ export function createAccessToken(userId) {
     { sub: userId.toString() },
     env.JWT_ACCESS_SECRET,
     {
-      expiresIn: env.ACCESS_TOKEN_TTL,
+      expiresIn: `${env.SESSION_DAYS}d`,
       issuer: env.JWT_ISSUER,
       audience: env.JWT_AUDIENCE
     }

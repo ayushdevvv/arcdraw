@@ -116,7 +116,7 @@ export default function RoomAgentPanel({ room, notes = [], elements = [], projec
         <div className="agent-suggestion-list"><span>Try asking</span>{SUGGESTIONS.map((suggestion) => <button type="button" key={suggestion} onClick={() => setPrompt(suggestion)} disabled={busy}>{suggestion}<ArrowUpRight size={12} /></button>)}</div>
       </div>
 
-      {error && <div className="agent-error-state" role="alert"><strong>Agent couldn't finish</strong><span>{error}</span>{errorCode === "AGENT_NOT_CONFIGURED" && <small>Agent needs a server AI provider key (AI_API_KEY in backend/.env). Web research also requires TAVILY_API_KEY.</small>}{(errorCode === "AUTH_REQUIRED" || errorCode === "ACCESS_TOKEN_INVALID") && <small>Your session expired. Sign out and sign back in, then try again.</small>}</div>}
+      {error && <div className="agent-error-state" role="alert"><strong>Agent couldn't finish</strong><span>{error}</span>{errorCode === "AGENT_NOT_CONFIGURED" && <small>Agent needs a server AI provider key (AI_API_KEY in backend/.env). Web research also requires TAVILY_API_KEY.</small>}{(errorCode === "AUTH_REQUIRED" || errorCode === "ACCESS_TOKEN_INVALID") && <small>Please sign in to use the agent.</small>}</div>}
 
       {result && (
         <div className="agent-results">

@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { AUTH_COOKIE_NAMES, AUTH_PATH, ACCESS_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
+import { AUTH_COOKIE_NAMES, AUTH_PATH } from "../constants/auth.constants.js";
 
 function baseCookieOptions() {
   return {
@@ -10,23 +10,18 @@ function baseCookieOptions() {
   };
 }
 
-export function setAuthCookies(res, { accessToken, refreshToken }) {
-  const base = baseCookieOptions();
+export function setAuthCookies(res, { accessToken }) {
   res.cookie(AUTH_COOKIE_NAMES.access, accessToken, {
-    ...base,
+    ...baseCookieOptions(),
     path: "/",
-    maxAge: ACCESS_COOKIE_MAX_AGE_MS
-  });
-  res.cookie(AUTH_COOKIE_NAMES.refresh, refreshToken, {
-    ...base,
-    path: AUTH_PATH,
-    maxAge: env.REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000
+    maxAge: env.SESSION_DAYS * 24 * 60 * 60 * 1000
   });
 }
 
 export function clearAuthCookies(res) {
   const base = baseCookieOptions();
   res.clearCookie(AUTH_COOKIE_NAMES.access, { ...base, path: "/" });
+  // Clean up the old refresh cookie from earlier deployments.
   res.clearCookie(AUTH_COOKIE_NAMES.refresh, { ...base, path: AUTH_PATH });
 }
 

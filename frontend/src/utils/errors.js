@@ -19,7 +19,7 @@ export function friendlyError(error, fallback) {
   if (name === "DatabaseClosedError" || name === "InvalidStateError" || name === "UnknownError") {
     return "Local storage is not available right now. Reload the page and try again.";
   }
-  if (status === 401) return "Your session expired. Sign in again to continue.";
+  if (status === 401) return "Please sign in to do that.";
   if (status === 403) return error.message && !TECHNICAL.test(error.message) ? error.message : "You do not have permission to do that.";
   if (status === 404) return error.message && !TECHNICAL.test(error.message) ? error.message : "We could not find that. It may have been removed.";
   if (status === 413) return "That is too large to sync. Remove large images and try again.";

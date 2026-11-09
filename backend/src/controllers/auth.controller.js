@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { AUTH_COOKIE_NAMES, OAUTH_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
 import * as authService from "../services/auth.service.js";
+import { verifyAccessToken } from "../services/token.service.js";
 import { createGoogleAuthorization, resolveGoogleUser } from "../services/google-oauth.service.js";
 import { createGitHubAuthorization, resolveGitHubUser } from "../services/github-oauth.service.js";
 import {
@@ -83,11 +84,13 @@ export const logout = asyncHandler(async (req, res) => {
 });
 
 export const refresh = asyncHandler(async (req, res) => {
-  const session = await authService.rotateRefreshSession(
-    req.cookies?.[AUTH_COOKIE_NAMES.refresh],
-    sessionMetadata(req)
-  );
-  return sendSession(res, session);
+  // Kept only so old frontends don't break; the login cookie is long-lived now.
+  const token = req.cookies?.[AUTH_COOKIE_NAMES.access];
+  if (!token) throw new ApiError(401, "Sign in required", "AUTH_REQUIRED");
+  let payload;
+  try { payload = verifyAccessToken(token); } catch { throw new ApiError(401, "Sign in required", "AUTH_REQUIRED"); }
+  const user = await authService.getUserById(payload.sub);
+  return res.status(200).json({ success: true, user });
 });
 
 export const me = asyncHandler(async (req, res) => {
