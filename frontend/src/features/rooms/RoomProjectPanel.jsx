@@ -24,6 +24,32 @@ function textForElement(element) {
   return `${element?.type || "Canvas object"}${compact ? ` · ${compact.slice(0, 36)}` : ""}`;
 }
 
+function dependsTransitivelyOn(tasks, fromId, targetId) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const stack = [fromId];
+  const seen = new Set();
+  while (stack.length) {
+    const id = stack.pop();
+    if (id === targetId) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const dependency of byId.get(id)?.dependsOnIds || []) stack.push(dependency);
+  }
+  return false;
+}
+
+function isTaskDescendant(tasks, candidateId, parentId) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  let current = byId.get(candidateId);
+  const seen = new Set();
+  while (current?.parentTaskId && !seen.has(current.id)) {
+    if (current.parentTaskId === parentId) return true;
+    seen.add(current.id);
+    current = byId.get(current.parentTaskId);
+  }
+  return false;
+}
+
 function TaskStatus({ status, onClick, readOnly }) {
   const next = status === "todo" ? "in-progress" : status === "in-progress" ? "done" : "todo";
   return (
@@ -73,6 +99,8 @@ export default function RoomProjectPanel({
       dueDate: active.dueDate || "",
       assigneeId: active.assigneeId || "",
       milestoneId: active.milestoneId || "",
+      parentTaskId: active.parentTaskId || "",
+      dependsOnIds: Array.isArray(active.dependsOnIds) ? active.dependsOnIds : [],
       linkedElementId: active.linkedElementId || "",
       linkedNoteId: active.linkedNoteId || ""
     } : {
@@ -84,6 +112,8 @@ export default function RoomProjectPanel({
       dueDate: "",
       assigneeId: "",
       milestoneId: "",
+      parentTaskId: "",
+      dependsOnIds: [],
       linkedElementId: selectedElementId || "",
       linkedNoteId: ""
     });
@@ -114,6 +144,8 @@ export default function RoomProjectPanel({
       assigneeName: selectedAssignee?.name || (draft.assigneeId ? existingItem?.assigneeName || null : null),
       dueDate: draft.dueDate || null,
       milestoneId: draft.milestoneId || null,
+      parentTaskId: draft.kind === "task" ? (draft.parentTaskId || null) : null,
+      dependsOnIds: draft.kind === "task" ? (draft.dependsOnIds || []).filter((id) => id !== editingId) : [],
       linkedElementId: draft.linkedElementId || null,
       linkedNoteId: draft.linkedNoteId || null
     });
@@ -182,6 +214,8 @@ export default function RoomProjectPanel({
             <label className="project-field"><span><CalendarDays size={12} /> Due date</span><input type="date" value={draft.dueDate} onChange={(event) => updateDraft("dueDate", event.target.value)} /></label>
             {draft.kind === "task" && <label className="project-field"><span>Assigned to</span><select value={draft.assigneeId} onChange={(event) => updateDraft("assigneeId", event.target.value)}><option value="">Unassigned</option>{assignees.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>}
             {draft.kind === "task" && <label className="project-field project-field-full"><span>Milestone</span><select value={draft.milestoneId} onChange={(event) => updateDraft("milestoneId", event.target.value)}><option value="">No milestone</option>{milestones.map((milestone) => <option key={milestone.id} value={milestone.id}>{milestone.title}</option>)}</select></label>}
+            {draft.kind === "task" && <label className="project-field"><span>Parent task</span><select value={draft.parentTaskId || ""} onChange={(event) => updateDraft("parentTaskId", event.target.value)}><option value="">No parent</option>{tasks.filter((task) => task.id !== editingId && !isTaskDescendant(tasks, task.id, editingId)).map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>}
+            {draft.kind === "task" && <label className="project-field"><span>Depends on</span><select multiple size={3} value={draft.dependsOnIds || []} onChange={(event) => updateDraft("dependsOnIds", Array.from(event.target.selectedOptions, (option) => option.value).filter((id) => id !== editingId))}>{tasks.filter((task) => task.id !== editingId && !dependsTransitivelyOn(tasks, task.id, editingId)).map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>}
           </div>
           <div className="project-link-fields">
             <div className="project-link-heading"><Link2 size={13} /><span>Connect this work</span></div>
@@ -214,6 +248,7 @@ export default function RoomProjectPanel({
                         <div className="kanban-task-meta"><span className={`project-priority priority-${task.priority || "medium"}`}>{task.priority || "medium"}</span>{task.dueDate && <span>{dateLabel(task.dueDate)}</span>}</div>
                         <button type="button" className="kanban-task-title" onClick={() => startEdit(task)} disabled={readOnly}>{task.title}</button>
                         {task.description && <p>{task.description}</p>}
+                        {(task.parentTaskId || task.dependsOnIds?.length) && <small className="project-task-relations">{task.parentTaskId ? `Subtask · ${tasks.find((item) => item.id === task.parentTaskId)?.title || "Parent"}` : ""}{task.dependsOnIds?.length ? ` · Depends on ${task.dependsOnIds.length}` : ""}</small>}
                         <div className="kanban-task-foot">{task.assigneeName && <span className="project-assignee"><span>{task.assigneeName.slice(0, 1).toUpperCase()}</span>{task.assigneeName}</span>}{(task.linkedNoteId || task.linkedElementId) && <button type="button" className="kanban-link-button" onClick={() => openLink(task)} title={linkedNote?.title || (linkedElement ? textForElement(linkedElement) : "Open linked item")}><Link2 size={12} /></button>}</div>
                         {!readOnly && <button type="button" className="kanban-edit-action" onClick={() => startEdit(task)}>Edit task</button>}
                       </article>;
@@ -228,7 +263,7 @@ export default function RoomProjectPanel({
             const linkedElement = task.linkedElementId ? elementById.get(task.linkedElementId) : null;
             const relatedMilestone = task.milestoneId ? milestones.find((milestone) => milestone.id === task.milestoneId) : null;
             return (
-              <article className={`project-task-card ${task.status === "done" ? "is-done" : ""}`} key={task.id}>
+              <article className={`project-task-card ${task.status === "done" ? "is-done" : ""} ${task.parentTaskId ? "is-subtask" : ""}`} key={task.id}>
                 <div className="project-task-main">
                   <TaskStatus status={task.status} onClick={() => updateStatus(task)} readOnly={readOnly} />
                   <div className="project-task-copy"><h3>{task.title}</h3>{task.description && <p>{task.description}</p>}</div>
@@ -239,6 +274,8 @@ export default function RoomProjectPanel({
                   {task.dueDate && <span><CalendarDays size={11} /> {dateLabel(task.dueDate)}</span>}
                   {task.assigneeName && <span className="project-assignee"><span>{task.assigneeName.slice(0, 1).toUpperCase()}</span>{task.assigneeName}</span>}
                   {relatedMilestone && <span className="project-milestone-chip"><Milestone size={11} />{relatedMilestone.title}</span>}
+                  {task.parentTaskId && <span className="project-milestone-chip">Subtask · {tasks.find((item) => item.id === task.parentTaskId)?.title || "Parent task"}</span>}
+                  {task.dependsOnIds?.length > 0 && <span className="project-milestone-chip">Depends on {task.dependsOnIds.length}</span>}
                 </div>
                 {(task.linkedNoteId || task.linkedElementId) && <button className="project-linked-reference" type="button" onClick={() => openLink(task)}><Link2 size={12} />{linkedNote ? `Note · ${linkedNote.title}` : linkedElement ? textForElement(linkedElement) : task.linkedNoteId ? "Linked note unavailable" : "Canvas element unavailable"}<span>Open</span></button>}
                 {!readOnly && <div className="project-task-actions"><button type="button" onClick={() => startEdit(task)}>Edit details</button><button type="button" className="project-delete-action" onClick={() => setConfirmDelete(task)}><Trash2 size={12} /> Delete</button></div>}

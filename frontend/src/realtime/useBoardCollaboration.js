@@ -7,6 +7,7 @@ import {
   readNotesFromYjs, writeNotesToYjs, updateNoteContentInYjs,
   readProjectItemsFromYjs, writeProjectItemsToYjs,
   readDesignStudioFromYjs, writeDesignStudioToYjs,
+  readRoomDiscussion, writeRoomMessage, writeRoomComment,
   summarizeDocDifference, canonicalJson,
   encodeUpdateBase64, decodeUpdateBase64, LOCAL_SCENE_ORIGIN, REMOTE_SCENE_ORIGIN
 } from "./yjsScene.js";
@@ -40,7 +41,7 @@ function writeDraftFlag(userId, roomId, on) {
 export function useBoardCollaboration({
   boardId, localUserId, shareToken = null, roleHint = null, initialWorkMode = "live",
   initialScene, initialNotes = [], initialProjectItems = [], initialDesignStudio = {}, enabled = true,
-  onRemoteScene, onRemoteNotes, onRemoteProjectItems, onRemoteDesignStudio, onModeChange, onProposalEvent
+  onRemoteScene, onRemoteNotes, onRemoteProjectItems, onRemoteDesignStudio, onRemoteDiscussion, onModeChange, onProposalEvent
 }) {
   const docRef = useRef(null);
   const socketRef = useRef(null);
@@ -54,7 +55,7 @@ export function useBoardCollaboration({
   const actionsRef = useRef({});
   const skipSeedRef = useRef(false);
   const callbacksRef = useRef({});
-  callbacksRef.current = { onModeChange, onProposalEvent };
+  callbacksRef.current = { onModeChange, onProposalEvent, onRemoteDiscussion };
 
   const startRole = roleHint === "editor" || roleHint === "viewer" ? roleHint : "owner";
   const [status, setStatus] = useState("idle");
@@ -176,6 +177,16 @@ export function useBoardCollaboration({
       onRemoteDesignStudio?.(designStudio);
     };
 
+    let lastAppliedDiscussionSignature = "";
+    const applyRemoteDiscussion = () => {
+      if (disposed || !doc) return;
+      const discussion = readRoomDiscussion(doc);
+      const signature = JSON.stringify(discussion);
+      if (signature === lastAppliedDiscussionSignature) return;
+      lastAppliedDiscussionSignature = signature;
+      callbacksRef.current.onRemoteDiscussion?.(discussion);
+    };
+
     const addParticipant = (participant) => {
       if (!participant?.userId) return;
       setParticipants((current) => {
@@ -223,7 +234,7 @@ export function useBoardCollaboration({
         if (projectItemsMap.size === 0 && initialProjectItems?.length) {
           writeProjectItemsToYjs(doc, initialProjectItems, LOCAL_SCENE_ORIGIN);
         }
-        if (!designStudioMap.has("document")) {
+        if (!designStudioMap.has("document") && !designStudioMap.has("tokens") && !designStudioMap.has("components")) {
           writeDesignStudioToYjs(doc, initialDesignStudio, LOCAL_SCENE_ORIGIN);
         }
       }
@@ -232,6 +243,7 @@ export function useBoardCollaboration({
           applyRemoteNotes();
           applyRemoteProjectItems();
           applyRemoteDesignStudio();
+          applyRemoteDiscussion();
         }
       };
       doc.on("update", observeDocumentUpdate);
@@ -247,6 +259,9 @@ export function useBoardCollaboration({
       knownFileValuesRef.current = new Map(filesMap.entries());
       knownFileRefsRef.current = new Map();
       knownMetadataRef.current = metadataMap.get("appState") ?? null;
+      // IndexedDB may already contain discussion changes queued while offline.
+      // Hydrate the panel before attempting the network connection.
+      applyRemoteDiscussion();
 
       socket = io(API_ORIGIN, {
         withCredentials: true,
@@ -393,7 +408,8 @@ export function useBoardCollaboration({
           applyRemoteScene();
           if (noteMetadataMap.size > 0) applyRemoteNotes();
           if (projectItemsMap.size > 0) applyRemoteProjectItems();
-          if (designStudioMap.has("document")) applyRemoteDesignStudio();
+          if (designStudioMap.has("document") || designStudioMap.has("tokens") || designStudioMap.has("components")) applyRemoteDesignStudio();
+          applyRemoteDiscussion();
 
           // Viewers receive the authoritative room snapshot and live updates,
           // but never upload a local replica or show queued write indicators.
@@ -696,6 +712,20 @@ export function useBoardCollaboration({
     writeDesignStudioToYjs(doc, designStudio, LOCAL_SCENE_ORIGIN);
   }, []);
 
+  const publishMessage = useCallback((message) => {
+    const doc = docRef.current;
+    if (!doc) return false;
+    writeRoomMessage(doc, message, LOCAL_SCENE_ORIGIN);
+    return true;
+  }, []);
+
+  const publishComment = useCallback((comment) => {
+    const doc = docRef.current;
+    if (!doc) return false;
+    writeRoomComment(doc, comment, LOCAL_SCENE_ORIGIN);
+    return true;
+  }, []);
+
   const flushToServer = useCallback(() => new Promise((resolve, reject) => {
     const doc = docRef.current;
     const socket = socketRef.current;
@@ -741,6 +771,7 @@ export function useBoardCollaboration({
     status, role, workMode, participants, error, pendingUpdates, lastSyncedAt,
     draftState, draftSummary,
     publishScene, publishNotes, updateNoteContent, publishProjectItems, publishDesignStudio,
+    publishMessage, publishComment,
     flushToServer, broadcastPointer, submitDraft, discardDraft, sendDraftToRoom
   };
 }

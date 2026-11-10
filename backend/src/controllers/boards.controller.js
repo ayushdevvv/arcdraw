@@ -48,6 +48,8 @@ const projectItemSchema = z.object({
   milestoneId: z.string().max(100).nullable().optional(),
   linkedElementId: z.string().max(100).nullable().optional(),
   linkedNoteId: z.string().max(100).nullable().optional(),
+  parentTaskId: z.string().max(100).nullable().optional(),
+  dependsOnIds: z.array(z.string().max(100)).max(100).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   deletedAt: z.string().nullable().optional()

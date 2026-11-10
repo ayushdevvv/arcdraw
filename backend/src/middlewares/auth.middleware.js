@@ -1,6 +1,7 @@
 import { AUTH_COOKIE_NAMES } from "../constants/auth.constants.js";
 import { verifyAccessToken } from "../services/token.service.js";
 import { ApiError } from "../utils/ApiError.js";
+import RefreshSession from "../models/RefreshSession.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const requireAuth = asyncHandler(async (req, res, next) => {
@@ -13,7 +14,10 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
 
   try {
     const payload = verifyAccessToken(token);
-    req.auth = { userId: payload.sub };
+    if (!payload.sid) throw new Error("Session reference missing");
+    const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
+    if (!session) throw new Error("Session revoked");
+    req.auth = { userId: payload.sub, sessionId: payload.sid };
     next();
   } catch {
     throw new ApiError(401, "Access token is invalid or expired", "ACCESS_TOKEN_INVALID");

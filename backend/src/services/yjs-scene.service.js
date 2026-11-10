@@ -14,7 +14,9 @@ function getMaps(doc) {
     noteMetadata: doc.getMap("arcdraw.notes.metadata.v1"),
     noteContent: doc.getMap("arcdraw.notes.content.v1"),
     projectItems: doc.getMap("arcdraw.project.items.v1"),
-    designStudio: doc.getMap("arcdraw.design.studio.v1")
+    designStudio: doc.getMap("arcdraw.design.studio.v1"),
+    messages: doc.getMap("arcdraw.discussion.messages.v1"),
+    comments: doc.getMap("arcdraw.discussion.comments.v1")
   };
 }
 
@@ -37,7 +39,7 @@ function writeProjectItemsToYDoc(doc, items = [], origin = LOCAL_SERVER_ORIGIN, 
   const allowed = [
     "kind", "title", "description", "status", "priority", "assigneeId",
     "assigneeName", "dueDate", "milestoneId", "linkedElementId",
-    "linkedNoteId", "createdAt", "updatedAt"
+    "linkedNoteId", "parentTaskId", "dependsOnIds", "createdAt", "updatedAt"
   ];
   doc.transact(() => {
     const incoming = (items || []).filter((entry) => entry?.id);
@@ -83,6 +85,8 @@ function writeProjectItemsToYDoc(doc, items = [], origin = LOCAL_SERVER_ORIGIN, 
         milestoneId: null,
         linkedElementId: null,
         linkedNoteId: null,
+        parentTaskId: null,
+        dependsOnIds: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       } : {};
@@ -92,7 +96,8 @@ function writeProjectItemsToYDoc(doc, items = [], origin = LOCAL_SERVER_ORIGIN, 
         if (key === "kind") values[key] = value === "milestone" ? "milestone" : "task";
         else if (key === "title") values[key] = String(value || "Untitled task").slice(0, 120);
         else if (key === "description") values[key] = String(value || "").slice(0, 3000);
-        else if (["assigneeId", "assigneeName", "dueDate", "milestoneId", "linkedElementId", "linkedNoteId"].includes(key)) values[key] = value || null;
+        else if (["assigneeId", "assigneeName", "dueDate", "milestoneId", "linkedElementId", "linkedNoteId", "parentTaskId"].includes(key)) values[key] = value || null;
+        else if (key === "dependsOnIds") values[key] = Array.isArray(value) ? [...new Set(value.map(String).filter(Boolean))].slice(0, 100) : [];
         else if (key === "status") values[key] = String(value || (item.kind === "milestone" ? "upcoming" : "todo"));
         else if (key === "priority") values[key] = String(value || "medium");
         else values[key] = value || new Date().toISOString();
@@ -136,6 +141,51 @@ function writeNotesToYDoc(doc, notes = [], origin = LOCAL_SERVER_ORIGIN) {
   }, origin);
 }
 
+function readStudioRecord(value) {
+  if (value instanceof Y.Map) return Object.fromEntries(value.entries());
+  return safeParse(value, null);
+}
+
+function readDesignStudio(maps) {
+  const legacy = safeParse(maps.designStudio.get("document"), null);
+  if (legacy) return {
+    tokens: Array.isArray(legacy.tokens) ? legacy.tokens : [],
+    components: Array.isArray(legacy.components) ? legacy.components : []
+  };
+  const tokens = maps.designStudio.get("tokens");
+  const components = maps.designStudio.get("components");
+  return {
+    tokens: tokens instanceof Y.Map ? [...tokens.values()].map(readStudioRecord).filter(Boolean) : [],
+    components: components instanceof Y.Map ? [...components.values()].map(readStudioRecord).filter(Boolean) : []
+  };
+}
+
+function writeDesignStudioToYDoc(doc, value, origin) {
+  const map = doc.getMap("arcdraw.design.studio.v1");
+  const legacy = safeParse(map.get("document"), null);
+  doc.transact(() => {
+    if (legacy) {
+      map.delete("document");
+      const tokenMap = new Y.Map();
+      const componentMap = new Y.Map();
+      for (const item of (legacy.tokens || [])) if (item?.id) tokenMap.set(String(item.id), JSON.stringify(item));
+      for (const item of (legacy.components || [])) if (item?.id) componentMap.set(String(item.id), JSON.stringify(item));
+      map.set("tokens", tokenMap);
+      map.set("components", componentMap);
+    }
+    let tokenMap = map.get("tokens");
+    if (!(tokenMap instanceof Y.Map)) { tokenMap = new Y.Map(); map.set("tokens", tokenMap); }
+    let componentMap = map.get("components");
+    if (!(componentMap instanceof Y.Map)) { componentMap = new Y.Map(); map.set("components", componentMap); }
+    const tokens = new Map((value?.tokens || []).filter((item) => item?.id).map((item) => [String(item.id), JSON.stringify(item)]));
+    const components = new Map((value?.components || []).filter((item) => item?.id).map((item) => [String(item.id), JSON.stringify(item)]));
+    for (const id of [...tokenMap.keys()]) if (!tokens.has(id)) tokenMap.delete(id);
+    for (const id of [...componentMap.keys()]) if (!components.has(id)) componentMap.delete(id);
+    for (const [id, encoded] of tokens) if (tokenMap.get(id) !== encoded) tokenMap.set(id, encoded);
+    for (const [id, encoded] of components) if (componentMap.get(id) !== encoded) componentMap.set(id, encoded);
+  }, origin);
+}
+
 export function writeSceneToYDoc(doc, scene = {}, origin = LOCAL_SERVER_ORIGIN) {
   const maps = getMaps(doc);
   const nextElements = Array.isArray(scene.elements) ? scene.elements : [];
@@ -166,13 +216,10 @@ export function writeSceneToYDoc(doc, scene = {}, origin = LOCAL_SERVER_ORIGIN) 
   }, origin);
   if (Array.isArray(scene.notes)) writeNotesToYDoc(doc, scene.notes, origin);
   const designStudio = {
-    tokens: Array.isArray(scene.designStudio?.tokens) ? scene.designStudio.tokens.slice(0, 100) : [],
-    components: Array.isArray(scene.designStudio?.components) ? scene.designStudio.components.slice(0, 100) : []
+    tokens: Array.isArray(scene.designStudio?.tokens) ? scene.designStudio.tokens.slice(0, 200) : [],
+    components: Array.isArray(scene.designStudio?.components) ? scene.designStudio.components.slice(0, 200) : []
   };
-  const encodedDesignStudio = JSON.stringify(designStudio);
-  if (maps.designStudio.get("document") !== encodedDesignStudio) {
-    doc.transact(() => maps.designStudio.set("document", encodedDesignStudio), origin);
-  }
+  writeDesignStudioToYDoc(doc, designStudio, origin);
   // Scene writes are authoritative snapshots (initial seed or history restore),
   // unlike incremental client project patches. Reconcile missing items and
   // clear old tombstones for records explicitly present in the restored scene.
@@ -217,13 +264,20 @@ export function readSceneFromYDoc(doc) {
   }
   projectItems.sort((left, right) => new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0));
 
+  const readDiscussion = (map) => [...map.entries()].map(([id, encoded]) => {
+    const item = encoded instanceof Y.Map ? Object.fromEntries(encoded.entries()) : safeParse(encoded, null);
+    return item && !item.deletedAt ? { ...item, id } : null;
+  }).filter(Boolean).sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+
   return {
     elements,
     appState: safeParse(maps.metadata.get("appState"), { viewBackgroundColor: "#ffffff" }),
     files,
     notes,
     projectItems,
-    designStudio: safeParse(maps.designStudio.get("document"), { tokens: [], components: [] })
+    designStudio: readDesignStudio(maps),
+    messages: readDiscussion(maps.messages),
+    comments: readDiscussion(maps.comments)
   };
 }
 

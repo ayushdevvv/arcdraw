@@ -1,6 +1,6 @@
 # Arcdraw
 
-**Current milestone: Arcdraw MEGA preview (v0.10.0).**
+**Current milestone: Arcdraw web-first workspace preview (v0.11.0).**
 
 Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use an optional research agent to turn goals into approved work. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
 
@@ -77,7 +77,7 @@ Google/GitHub OAuth and SMTP are optional for local development. Provider setup 
 - Email/password auth, 8-digit email/password-reset OTP, Google OAuth and GitHub OAuth.
 - HTTP-only access/refresh cookies with refresh-token rotation.
 - Guest identity and local Rooms library in the browser, with separate **Boards** and **Notes** library filters and **Create board** / **Create notes** actions.
-- Dedicated Board rooms with the Excalidraw canvas, local Dexie/IndexedDB autosave, import and export.
+- Dedicated Board rooms with the Excalidraw canvas, local Dexie/IndexedDB autosave, import and export. The board toolbar includes image upload, drag-and-drop, clipboard paste and editable sticky-note groups.
 - Dedicated Notes rooms with a full-width Markdown writing workspace, note library, search and preview. Notes are not shown beside the canvas.
 - Production PWA shell caching for reopening the app offline after it has been loaded once.
 - Account-backed cloud Rooms.
@@ -85,19 +85,22 @@ Google/GitHub OAuth and SMTP are optional for local development. Provider setup 
 - Live multi-user scene synchronization using Yjs over Socket.IO. Board rooms and notes rooms use the same room identity, permissions, presence and sync path.
 - Room Project panel in both room types with tasks, milestones, status, priority, due dates and live-room assignees. Board tasks link directly to canvas elements; Notes tasks link directly to notes. Project data is cached in IndexedDB, persisted in the room Yjs document and included in editable exports/checkpoints.
 - Live participant presence and remote pointer cursors.
+- Room Discussion panel with persistent Yjs chat messages, canvas-anchored comments, threaded replies, resolve/reopen controls and jump-to-object navigation. Discussion is shared by authenticated cloud-room collaborators.
+- Board image insertion through a dedicated file picker, drag-and-drop and image paste. Images are downsampled/compressed before being stored in Excalidraw's file cache, local room record and cloud Yjs document. Notes can also attach images and render them from room assets.
+- Design Studio component masters, inserted instances, per-instance text/color/visibility properties, captured variants with their own properties, and update-master propagation to default instances. Layer tools also support grouping/ungrouping selected objects.
 - Git-inspired named checkpoint history with parent links, restore checkpoints and scene, notes + project change summaries.
 - Dedicated Notes rooms use the same local autosave, sharing, presence and Yjs collaborative text system as Board rooms.
 - Notes drafts flush before opening Project or leaving a room; save indicators stay pending until the latest draft is persisted locally.
 - Persistent light and dark themes across the home page, Rooms library, Board canvas and Notes workspace, with Manrope interface typography and DM Mono metadata.
 - Room library folders, room movement, and a bulk local-to-cloud migration action that keeps local copies intact. Folder metadata is currently local to each browser.
-- Project Kanban with drag-and-drop status changes, plus a list view, task/milestone links, and room-level assignments.
-- Board Design Studio with flat layer ordering/hide/lock, frame presets, reusable component snapshots and variants, color tokens, geometric auto layout and presentation mode. See [`docs/design-studio.md`](docs/design-studio.md) for what is deliberately not a native Figma-grade design engine yet.
+- Project Kanban with drag-and-drop status changes, a list view, task/milestone links, subtasks, dependency relationships with cycle-prevention in the editor, and room-level assignments.
+- Board Design Studio with layers, grouping/ungrouping, frame presets, reusable component masters/instances, basic properties and variants, room color tokens, geometric auto layout and presentation mode. This remains an Excalidraw-backed design toolkit, not a complete native Figma replacement. See [`docs/design-studio.md`](docs/design-studio.md).
 - Arcdraw Agent: room-aware goal analysis, optional Tavily web research, gap analysis, recommended approach and proposed tasks. If Tavily is unavailable, analysis falls back to a clearly labelled AI-only plan. Only explicitly approved tasks are written into Project. Provider keys stay on the server.
 - Same-Wi-Fi LAN-hosted collaboration setup using the existing Express + Socket.IO service. See [`docs/lan-collaboration.md`](docs/lan-collaboration.md).
 
 ## Collaboration setup and testing
 
-Read [`docs/collaboration.md`](docs/collaboration.md) for architecture, API routes, a two-account/two-browser test and known limitations. Read [`docs/project-management.md`](docs/project-management.md), [`docs/design-studio.md`](docs/design-studio.md), [`docs/agent.md`](docs/agent.md), and [`docs/mega-roadmap.md`](docs/mega-roadmap.md) for the updated MEGA scope and feature boundaries.
+Read [`docs/collaboration.md`](docs/collaboration.md) for architecture, chat/comments behavior, API routes, a two-account/two-browser test and known limitations. Use [`docs/web-stability-checklist.md`](docs/web-stability-checklist.md) for the recommended release test sequence. Read [`docs/project-management.md`](docs/project-management.md), [`docs/design-studio.md`](docs/design-studio.md), [`docs/agent.md`](docs/agent.md), and [`docs/mega-roadmap.md`](docs/mega-roadmap.md) for the updated MEGA scope and feature boundaries.
 
 ## Project structure
 
@@ -143,10 +146,10 @@ arcdraw/
 - Share URLs are bearer invitations; anyone with a valid link can use its permission after signing in. Revoke links when no longer needed.
 - Cloud collaboration requires HTTPS in production so HTTP-only secure cookies can be used.
 - This version keeps active Yjs rooms in one server process. Multi-instance deployments need a shared Socket.IO adapter and coordinated persistence.
-- Same-element concurrent canvas edits are whole-element last-writer-wins, not property-level merges.
+- Same-element concurrent canvas edits are whole-element last-writer-wins, not property-level merges. Component master records are updated per component; independent component records/tokens no longer share one global serialized blob.
 - Folder organization is currently local to a browser; it is not a cloud team folder hierarchy.
 - Agent calls send the prompt and bounded room excerpts to the configured AI provider. Tavily receives only the search query. Review third-party provider data terms before sending confidential room content.
-- The current release is a development preview. Full production build, multi-user conflict testing, cloud folder membership, asset backup recovery and multi-instance Socket.IO scaling still need verification.
+- The current release is a web-first development preview. Desktop/Tauri is intentionally out of scope until the web app is stable. The production frontend build and live browser/device tests still need to be run in an environment with npm registry access. Multi-user conflict testing, cloud folder membership, asset backup recovery and multi-instance Socket.IO scaling remain release blockers.
 
 ## Working modes (room owner decides)
 
@@ -161,4 +164,4 @@ If the owner switches back to live editing, editors who still hold an unsent dra
 
 1. Backend on Render: use `backend/render.yaml`. Set MONGODB_URI, JWT_ACCESS_SECRET (32+ characters), CLIENT_URL, CORS_ORIGINS and API_PUBLIC_URL to your deployed addresses. The server refuses to start in production with localhost addresses or without COOKIE_SECURE.
 2. Frontend on Vercel: set `VITE_API_BASE_URL` to `https://your-api.onrender.com/api/v1`. `frontend/vercel.json` adds security headers and caching.
-3. Rooms sync up to about 7 MB. The editor warns before that limit is reached.
+3. Rooms sync up to about 7 MB. The editor warns before that limit is reached. Large image assets are currently embedded in room snapshots; use modest images until object storage and backup recovery are implemented.

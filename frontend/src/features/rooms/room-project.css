@@ -111,3 +111,7 @@
   .project-items-list { padding-inline: 14px; }
   .project-item-form { margin-inline: 13px; }
 }
+
+.project-task-card.is-subtask { margin-left: 18px; border-left: 3px solid var(--line-strong); }
+.project-task-relations { display:block; margin-top:6px; color:var(--text-3); font-size:11px; }
+.project-field select[multiple] { min-height:84px; padding:7px; }

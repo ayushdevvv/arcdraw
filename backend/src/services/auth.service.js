@@ -6,7 +6,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { hashToken } from "../utils/crypto.js";
 import { createOtp, hashOtp, verifyOtpHash, OTP_TTL_MINUTES, OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_SECONDS } from "../utils/otp.js";
 import { toPublicUser } from "../utils/user.dto.js";
-import { createAccessToken } from "./token.service.js";
+import { createAccessToken, createRefreshToken } from "./token.service.js";
 import { sendPasswordResetOtpEmail, sendVerificationOtpEmail } from "./mail.service.js";
 
 const OTP_TTL_MS = OTP_TTL_MINUTES * 60 * 1000;
@@ -19,10 +19,18 @@ function getSessionMetadata(metadata = {}) {
   };
 }
 
-async function createSession(user) {
+async function createSession(user, metadata = {}) {
+  const refresh = createRefreshToken();
+  const session = await RefreshSession.create({
+    user: user._id,
+    tokenHash: refresh.tokenHash,
+    expiresAt: new Date(Date.now() + env.SESSION_DAYS * 24 * 60 * 60 * 1000),
+    ...getSessionMetadata(metadata)
+  });
   return {
     user: toPublicUser(user),
-    accessToken: createAccessToken(user._id)
+    accessToken: createAccessToken(user._id, session._id),
+    refreshToken: refresh.token
   };
 }
 
@@ -184,9 +192,53 @@ export async function createSessionForUser(user, metadata) {
   return createSession(user, metadata);
 }
 
-// Single long-lived login cookie: nothing to rotate or revoke server-side.
-export async function revokeRefreshSession() {}
-export async function revokeAllSessions() {}
+export async function revokeRefreshSession(refreshToken) {
+  if (!refreshToken || typeof refreshToken !== "string") return;
+  await RefreshSession.updateOne(
+    { tokenHash: hashToken(refreshToken), revokedAt: null },
+    { $set: { revokedAt: new Date() } }
+  );
+}
+
+export async function revokeAllSessions(userId) {
+  if (!userId) return;
+  await RefreshSession.updateMany(
+    { user: userId, revokedAt: null },
+    { $set: { revokedAt: new Date() } }
+  );
+}
+
+export async function rotateRefreshSession(refreshToken, metadata = {}) {
+  if (!refreshToken || typeof refreshToken !== "string") {
+    throw new ApiError(401, "Sign in required", "AUTH_REQUIRED");
+  }
+  const now = new Date();
+  const tokenHash = hashToken(refreshToken);
+  const existing = await RefreshSession.findOne({ tokenHash, revokedAt: null, expiresAt: { $gt: now } }).select("+tokenHash");
+  if (!existing) throw new ApiError(401, "Your session has expired. Sign in again.", "AUTH_REQUIRED");
+
+  const nextRefresh = createRefreshToken();
+  const claimed = await RefreshSession.findOneAndUpdate(
+    { _id: existing._id, revokedAt: null, expiresAt: { $gt: now } },
+    { $set: { revokedAt: now, replacedByTokenHash: nextRefresh.tokenHash } },
+    { new: true }
+  );
+  if (!claimed) throw new ApiError(401, "This session was already refreshed. Sign in again.", "AUTH_REQUIRED");
+
+  const user = await User.findById(existing.user);
+  if (!user) throw new ApiError(401, "Account not found", "AUTH_REQUIRED");
+  const nextSession = await RefreshSession.create({
+    user: user._id,
+    tokenHash: nextRefresh.tokenHash,
+    expiresAt: new Date(Date.now() + env.SESSION_DAYS * 24 * 60 * 60 * 1000),
+    ...getSessionMetadata(metadata)
+  });
+  return {
+    user: toPublicUser(user),
+    accessToken: createAccessToken(user._id, nextSession._id),
+    refreshToken: nextRefresh.token
+  };
+}
 
 export async function getUserById(userId) {
   const user = await User.findById(userId);

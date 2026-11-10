@@ -13,6 +13,9 @@ function summaryLine(summary) {
   add("images", summary.files);
   add("notes", summary.notes);
   add("tasks", summary.projectItems);
+  add("messages", summary.messages);
+  add("comments", summary.comments);
+  add("design library items", summary.designStudio);
   return parts.join(", ");
 }
 

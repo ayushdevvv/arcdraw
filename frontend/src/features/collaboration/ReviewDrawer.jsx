@@ -23,6 +23,9 @@ function chips(summary) {
   add("images", summary.filesAdded, summary.filesUpdated, summary.filesDeleted);
   add("notes", summary.notesAdded, summary.notesUpdated, summary.notesDeleted);
   add("tasks", summary.projectItemsAdded, summary.projectItemsUpdated, summary.projectItemsDeleted);
+  add("messages", summary.messagesAdded, summary.messagesUpdated, summary.messagesDeleted);
+  add("comments", summary.commentsAdded, summary.commentsUpdated, summary.commentsDeleted);
+  add("design items", summary.designStudioAdded, summary.designStudioUpdated, summary.designStudioDeleted);
   return list;
 }
 

@@ -102,11 +102,32 @@ A checkpoint stores a complete encoded Yjs document snapshot plus message, autho
 A local browser can still open its own rooms without internet. Live collaboration between different devices currently uses the cloud Socket.IO endpoint and therefore requires network access; LAN-only rooms are not part of this milestone.
 
 
+## Room discussion: messages and comments
+
+Authenticated cloud rooms include a shared Discussion panel for Board and Notes rooms. Room chat messages and comments are separate keyed Yjs records, persisted with the room document and included in checkpoint snapshots and commit/review change summaries. Each record is updated independently so adding or resolving one comment does not replace the entire conversation list.
+
+- **Chat:** room-wide text messages with author name and timestamp.
+- **Canvas comments:** comments can be anchored to the currently selected canvas element or left as room-level feedback. A comment's View object action selects and scrolls to its target element.
+- **Threads:** replies retain their parent comment ID and inherit the original canvas anchor.
+- **Resolution:** top-level comments can be resolved/reopened; the panel can switch between open and all comments.
+- **Permissions:** viewers can read the discussion but cannot post, reply or resolve comments. Editors/owners require a signed-in account and a cloud room.
+
+Discussion does not currently provide message editing/deletion, file attachments, @mention notifications, email/push notifications or guest-only local chat. If a room is opened offline after its Yjs replica has been initialized, new discussion updates remain locally queued and are sent on reconnect.
+
+### Discussion smoke test
+
+1. Open the same cloud Board room in two signed-in browser profiles and open Discussion in both.
+2. Send a message in one profile and verify it appears in the other without reloading.
+3. Select a canvas element, add a comment, and verify the other profile sees the comment with the correct anchor.
+4. Reply to that comment after selecting a different object; verify the reply stays attached to the original thread anchor.
+5. Resolve and reopen the root comment, then refresh both profiles and confirm the state persists.
+6. Open the room as a viewer and verify that messages/comments are readable but composer and resolve controls are disabled.
+
 ## Notes workspace synchronization
 
 Room notes share the room's cloud Y.Doc. Note metadata is held in `arcdraw.notes.metadata.v1`; each note body is a Y.Text in `arcdraw.notes.content.v1`. Body edits are published as Y.Text operations on input, rather than replacing a whole note snapshot. IndexedDB/Dexie stores the local note replica and is updated from remote Yjs changes. Creating, renaming, linking and deleting notes updates metadata; a newly created note seeds its Y.Text once. Existing Y.Text content must not be replaced by a stale local metadata refresh.
 
-A named checkpoint captures the whole Y.Doc, including canvas elements, files and notes. Restoring a checkpoint therefore restores the notes content and metadata alongside the drawing. The current Notes Studio editor is Markdown-based (write/preview), not a full block editor or a TipTap/ProseMirror CRDT editor. Cursor-preserving remote updates are best-effort; collaborative remote edits can still reposition a selection when changes overlap.
+A named checkpoint captures the whole Y.Doc, including canvas elements, files and notes. Restoring a checkpoint therefore restores the notes content and metadata alongside the drawing. The current Notes Studio editor is Markdown-based (write/preview), not a full block editor or a TipTap/ProseMirror CRDT editor. Notes can attach compressed room images with `arcdraw-asset:<id>` Markdown references; those file records share the room's Yjs files map. Cursor-preserving remote updates are best-effort; collaborative remote edits can still reposition a selection when changes overlap.
 
 ### Notes collaboration smoke test
 

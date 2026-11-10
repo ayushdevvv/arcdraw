@@ -77,3 +77,13 @@
 .nt-format button { border-radius: 10px; }
 .nt-first-icon { border-radius: 16px; }
 .notes-markdown-preview code, .notes-markdown-preview pre { border-radius: 8px; }
+
+.notes-table-wrap { width: 100%; margin: 1.2em 0 1.5em; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.notes-markdown-preview table { width: 100%; border-collapse: collapse; min-width: 420px; font-size: 14px; }
+.notes-markdown-preview th, .notes-markdown-preview td { padding: 11px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.notes-markdown-preview th { background: var(--bg-subtle); color: var(--text); font-weight: 700; }
+.notes-markdown-preview tr:last-child td { border-bottom: 0; }
+.notes-markdown-preview tbody tr:nth-child(even) { background: var(--bg-subtle); }
+
+.notes-inline-image { display:block; max-width:100%; max-height:560px; margin:16px 0; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:var(--bg-subtle); }
+.notes-missing-image { display:inline-flex; padding:8px 10px; border:1px dashed var(--line-strong); border-radius:8px; color:var(--text-3); font-size:12px; }

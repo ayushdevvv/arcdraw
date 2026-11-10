@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   getCurrentUser,
+  refreshSession as refreshAccountSession,
   login as loginRequest,
   logout as logoutRequest
 } from "../services/authService.js";
@@ -14,7 +15,13 @@ function bootstrapAccountSession() {
       try {
         return await getCurrentUser();
       } catch (error) {
-        if (error.status === 401) return { user: null };
+        if (error.status === 401) {
+          try { return await refreshAccountSession(); }
+          catch (refreshError) {
+            if (refreshError.status === 401) return { user: null };
+            throw refreshError;
+          }
+        }
         throw error;
       }
     })().finally(() => {

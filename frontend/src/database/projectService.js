@@ -35,20 +35,39 @@ export async function saveRoomProjectItem(guestId, roomId, values = {}) {
 
 export async function deleteRoomProjectItem(guestId, roomId, itemId) {
   const item = await db.projectItems.get(itemId);
+  let tombstone = null;
+  const changedItems = [];
   if (item && item.guestId === guestId && item.roomId === roomId) {
     const now = new Date().toISOString();
     await db.transaction("rw", db.projectItems, async () => {
+      const roomTasks = await db.projectItems.where("guestId").equals(guestId)
+        .filter((entry) => entry.roomId === roomId && entry.kind === "task" && !entry.deletedAt).toArray();
       if (item.kind === "milestone") {
-        const linkedTasks = await db.projectItems.where("guestId").equals(guestId)
-          .filter((entry) => entry.roomId === roomId && entry.milestoneId === itemId && !entry.deletedAt).toArray();
-        for (const task of linkedTasks) await db.projectItems.update(task.id, { milestoneId: null, updatedAt: now });
+        const linkedTasks = roomTasks.filter((entry) => entry.milestoneId === itemId);
+        for (const task of linkedTasks) {
+          const updated = { ...task, milestoneId: null, updatedAt: now };
+          await db.projectItems.update(task.id, { milestoneId: null, updatedAt: now });
+          changedItems.push(updated);
+        }
+      } else {
+        for (const task of roomTasks) {
+          const patch = {};
+          if (task.parentTaskId === itemId) patch.parentTaskId = null;
+          if (task.dependsOnIds?.includes(itemId)) patch.dependsOnIds = task.dependsOnIds.filter((id) => id !== itemId);
+          if (Object.keys(patch).length) {
+            const updated = { ...task, ...patch, updatedAt: now };
+            await db.projectItems.update(task.id, { ...patch, updatedAt: now });
+            changedItems.push(updated);
+          }
+        }
       }
       // Keep a tombstone in both IndexedDB and Yjs. This prevents an offline
       // collaborator's stale copy from resurrecting a deleted task or milestone.
-      await db.projectItems.put({ ...item, deletedAt: now, updatedAt: now });
+      tombstone = { ...item, deletedAt: now, updatedAt: now };
+      await db.projectItems.put(tombstone);
     });
   }
-  return listRoomProjectItems(guestId, roomId);
+  return { items: await listRoomProjectItems(guestId, roomId), tombstone, changedItems };
 }
 
 export async function mergeRoomProjectItems(guestId, roomId, incoming = []) {

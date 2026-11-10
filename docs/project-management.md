@@ -4,9 +4,9 @@ Each Arcdraw Room includes the same project layer, whether the room was created 
 
 ## What is included
 
-- **Tasks:** title, description, status, priority, due date and assignee.
+- **Tasks:** title, description, status, priority, due date, assignee, optional parent task and task dependencies. The editor filters out dependency/parent choices that would create a cycle.
 - **Milestones:** named checkpoints with target dates and progress derived from linked tasks.
-- **Assignments:** the room owner/current user and active collaborators currently present in the room are available in the assignment picker.
+- **Assignments:** the room owner/current user and active collaborators currently present in the room are available in the assignment picker. A persistent team directory and workload planner are not included yet.
 - **Board task links:** in a Board room, a task can point to a canvas element, including the currently selected element. Opening the link selects and scrolls to that element.
 - **Notes task links:** in a Notes room, a task can point to a note in that room. Opening the link focuses that note in the Notes workspace.
 
@@ -31,4 +31,4 @@ Deleting a task or milestone writes a `deletedAt` tombstone instead of immediate
 
 ## Scope note
 
-Assignment choices are currently the current user and collaborators active in the room. This release does not yet include a persistent team directory, comments, workload views or notification delivery.
+Assignment choices are currently the current user and collaborators active in the room. This release includes room-level chat and canvas-anchored comments in the Discussion panel (see `collaboration.md`). It does not yet include task-specific threaded comments, task notifications, reminders, workload views or a persistent team directory.

@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
-  Bold, Check, Code2, Eye, FileText, Heading1, Italic, Link2,
+  Bold, Check, Code2, Eye, FileText, Heading1, Italic, Link2, ImagePlus,
   List, ListChecks, LoaderCircle, Plus, Quote, Search, Trash2
 } from "lucide-react";
 import "../../notes.css";
@@ -15,9 +15,18 @@ function relativeTime(value) {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function InlineMarkdown({ text }) {
-  const parts = String(text).split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~)/g);
+function InlineMarkdown({ text, files = {} }) {
+  const parts = String(text).split(/(!\[[^\]]*\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~)/g);
   return parts.map((part, index) => {
+    if (part.startsWith("![") && part.endsWith(")")) {
+      const match = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (!match) return <span key={index}>{part}</span>;
+      const [, alt, rawSource] = match;
+      const assetMatch = rawSource.match(/^arcdraw-asset:([a-zA-Z0-9_-]+)$/);
+      const source = assetMatch ? files[assetMatch[1]]?.dataURL : rawSource;
+      const safe = typeof source === "string" && (/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);/i.test(source) || /^https?:\/\//i.test(source));
+      return safe ? <img key={index} className="notes-inline-image" src={source} alt={alt || "Note attachment"} loading="lazy" /> : <span key={index} className="notes-missing-image">Image attachment unavailable</span>;
+    }
     if (part.startsWith("**") && part.endsWith("**")) return <strong key={index}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("*") && part.endsWith("*")) return <em key={index}>{part.slice(1, -1)}</em>;
     if (part.startsWith("`") && part.endsWith("`")) return <code key={index}>{part.slice(1, -1)}</code>;
@@ -26,7 +35,7 @@ function InlineMarkdown({ text }) {
   });
 }
 
-function MarkdownPreview({ value }) {
+function MarkdownPreview({ value, files = {} }) {
   const lines = String(value || "").split("\n");
   const blocks = [];
   let index = 0;
@@ -44,13 +53,26 @@ function MarkdownPreview({ value }) {
     const heading = line.match(/^(#{1,3})\s+(.+)$/);
     if (heading) {
       const Tag = `h${heading[1].length}`;
-      blocks.push(<Tag key={`h-${index}`}><InlineMarkdown text={heading[2]} /></Tag>);
+      blocks.push(<Tag key={`h-${index}`}><InlineMarkdown text={heading[2]} files={files} /></Tag>);
       index += 1;
       continue;
     }
     if (/^>\s?/.test(line)) {
-      blocks.push(<blockquote key={`q-${index}`}><InlineMarkdown text={line.replace(/^>\s?/, "")} /></blockquote>);
+      blocks.push(<blockquote key={`q-${index}`}><InlineMarkdown text={line.replace(/^>\s?/, "")} files={files} /></blockquote>);
       index += 1;
+      continue;
+    }
+    // Markdown pipe tables: header row followed by a separator row.
+    if (line.includes("|") && index + 1 < lines.length && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[index + 1])) {
+      const cells = (row) => row.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+      const headers = cells(line);
+      index += 2;
+      const rows = [];
+      while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+        rows.push(cells(lines[index]));
+        index += 1;
+      }
+      blocks.push(<div className="notes-table-wrap" key={`table-${index}`}><table><thead><tr>{headers.map((cell, cellIndex) => <th key={cellIndex}><InlineMarkdown text={cell} files={files} /></th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{headers.map((_, cellIndex) => <td key={cellIndex}><InlineMarkdown text={row[cellIndex] || ""} files={files} /></td>)}</tr>)}</tbody></table></div>);
       continue;
     }
     if (/^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
@@ -61,13 +83,13 @@ function MarkdownPreview({ value }) {
         index += 1;
       }
       const Tag = ordered ? "ol" : "ul";
-      blocks.push(<Tag key={`list-${index}`}>{items.map((item, itemIndex) => <li key={itemIndex}><InlineMarkdown text={item.replace(/^\[([ xX])\]\s*/, "")} />{/^\[[ xX]\]/.test(item) && <span className="notes-preview-check">{item[1].toLowerCase() === "x" ? "✓" : "○"}</span>}</li>)}</Tag>);
+      blocks.push(<Tag key={`list-${index}`}>{items.map((item, itemIndex) => <li key={itemIndex}><InlineMarkdown text={item.replace(/^\[([ xX])\]\s*/, "")} files={files} />{/^\[[ xX]\]/.test(item) && <span className="notes-preview-check">{item[1].toLowerCase() === "x" ? "✓" : "○"}</span>}</li>)}</Tag>);
       continue;
     }
     const paragraph = [line];
     index += 1;
     while (index < lines.length && lines[index].trim() && !/^(#{1,3}\s|```|>\s?|[-*]\s+|\d+\.\s+)/.test(lines[index])) paragraph.push(lines[index++]);
-    blocks.push(<p key={`p-${index}`}><InlineMarkdown text={paragraph.join(" ")} /></p>);
+    blocks.push(<p key={`p-${index}`}><InlineMarkdown text={paragraph.join(" ")} files={files} /></p>);
   }
   return <div className="notes-markdown-preview">{blocks.length ? blocks : <p className="notes-preview-empty">Nothing to preview yet. Start writing in Markdown.</p>}</div>;
 }
@@ -99,6 +121,7 @@ function mapSelectionPosition(previous, next, position) {
 
 function RoomNotesPanel({
   notes = [],
+  files = {},
   loading = false,
   readOnly = false,
   syncLabel = "Saved on this device",
@@ -110,6 +133,7 @@ function RoomNotesPanel({
   onContentInput,
   onDelete,
   onAttachSelection,
+  onAttachImage,
   standalone = false
 }, ref) {
   const [activeId, setActiveId] = useState(null);
@@ -119,6 +143,7 @@ function RoomNotesPanel({
   const [mode, setMode] = useState("write");
   const [saveState, setSaveState] = useState("saved");
   const textareaRef = useRef(null);
+  const imageInputRef = useRef(null);
   const saveTimerRef = useRef(null);
   const pendingDraftRef = useRef(null);
   const lastLocalContentRef = useRef("");
@@ -306,6 +331,22 @@ function RoomNotesPanel({
     setDraftContent(nextContent);
     onContentInput?.(activeNote.id, nextContent);
   }
+  async function attachImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !activeNote || readOnly || !onAttachImage) return;
+    const assetId = await onAttachImage(file);
+    if (!assetId) return;
+    const safeAlt = file.name.replace(/[\[\]()\r\n\\]/g, " ").slice(0, 100) || "Image";
+    const snippet = `![${safeAlt}](arcdraw-asset:${assetId})`;
+    const cursor = textareaRef.current?.selectionStart ?? draftContent.length;
+    const prefix = draftContent.slice(0, cursor);
+    const suffix = draftContent.slice(cursor);
+    const next = `${prefix}${prefix && !prefix.endsWith("\n") ? "\n\n" : ""}${snippet}\n\n${suffix}`;
+    setDraftContent(next);
+    onContentInput?.(activeNote.id, next);
+  }
+
   function modeWrite() { setMode("write"); }
   function modePreview() { setMode("preview"); }
   function attachSelection() { onAttachSelection?.(activeNote.id, selectedElementId); }
@@ -345,6 +386,7 @@ function RoomNotesPanel({
               <span className="nt-save"><i className={saveState} />{saveText}</span>
               <div className="nt-bar-actions">
                 {selectedElementId && !readOnly && <button className="secondary-button nt-small" type="button" onClick={attachSelection}><Link2 size={14} /> Link selection</button>}
+                {!readOnly && onAttachImage && <><input ref={imageInputRef} type="file" accept="image/*" hidden onChange={attachImage} /><button className="secondary-button nt-small" type="button" onClick={() => imageInputRef.current?.click()}><ImagePlus size={14} /> Add image</button></>}
                 {!readOnly && (confirmingDelete
                   ? <span className="inline-confirm"><button type="button" onClick={() => setConfirmingDelete(false)}>Keep</button><button type="button" className="is-danger" onClick={removeActive}>Delete note</button></span>
                   : <button className="icon-button" type="button" onClick={() => setConfirmingDelete(true)} aria-label="Delete note" data-tip="Delete note"><Trash2 size={15} /></button>)}
@@ -364,7 +406,7 @@ function RoomNotesPanel({
                     readOnly={readOnly}
                     spellCheck="true"
                   />
-                ) : <div className="notes-preview-scroll nt-preview"><MarkdownPreview value={draftContent} /></div>}
+                ) : <div className="notes-preview-scroll nt-preview"><MarkdownPreview value={draftContent} files={files} /></div>}
               </div>
             </div>
             {mode === "write" && !readOnly && (

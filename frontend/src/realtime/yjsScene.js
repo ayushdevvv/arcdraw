@@ -2,6 +2,8 @@ import * as Y from "yjs";
 
 export const LOCAL_SCENE_ORIGIN = "arcdraw-local-scene";
 export const REMOTE_SCENE_ORIGIN = "arcdraw-remote-scene";
+const DISCUSSION_MESSAGES_MAP = "arcdraw.discussion.messages.v1";
+const DISCUSSION_COMMENTS_MAP = "arcdraw.discussion.comments.v1";
 
 function parseJson(value, fallback) {
   try { return JSON.parse(value); } catch { return fallback; }
@@ -18,7 +20,14 @@ function getTypes(doc) {
 export function hasYjsScene(doc) {
   const scene = getTypes(doc);
   const notes = getNoteMaps(doc);
-  return scene.elements.size > 0 || scene.files.size > 0 || notes.metadata.size > 0;
+  return scene.elements.size > 0
+    || scene.files.size > 0
+    || scene.metadata.size > 0
+    || notes.metadata.size > 0
+    || doc.getMap(PROJECT_ITEMS_MAP).size > 0
+    || doc.getMap(DESIGN_STUDIO_MAP).size > 0
+    || doc.getMap(DISCUSSION_MESSAGES_MAP).size > 0
+    || doc.getMap(DISCUSSION_COMMENTS_MAP).size > 0;
 }
 
 export function writeSceneToYjs(doc, scene, origin = LOCAL_SCENE_ORIGIN, {
@@ -246,7 +255,7 @@ export function writeProjectItemsToYjs(doc, items = [], origin = LOCAL_SCENE_ORI
   const allowed = [
     "kind", "title", "description", "status", "priority", "assigneeId",
     "assigneeName", "dueDate", "milestoneId", "linkedElementId",
-    "linkedNoteId", "createdAt", "updatedAt"
+    "linkedNoteId", "parentTaskId", "dependsOnIds", "createdAt", "updatedAt"
   ];
   doc.transact(() => {
     for (const item of (items || []).filter((entry) => entry?.id)) {
@@ -276,6 +285,8 @@ export function writeProjectItemsToYjs(doc, items = [], origin = LOCAL_SCENE_ORI
         milestoneId: null,
         linkedElementId: null,
         linkedNoteId: null,
+        parentTaskId: null,
+        dependsOnIds: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       } : {};
@@ -285,7 +296,8 @@ export function writeProjectItemsToYjs(doc, items = [], origin = LOCAL_SCENE_ORI
         if (key === "kind") values[key] = value === "milestone" ? "milestone" : "task";
         else if (key === "title") values[key] = String(value || "Untitled task").slice(0, 120);
         else if (key === "description") values[key] = String(value || "").slice(0, 3000);
-        else if (["assigneeId", "assigneeName", "dueDate", "milestoneId", "linkedElementId", "linkedNoteId"].includes(key)) values[key] = value || null;
+        else if (["assigneeId", "assigneeName", "dueDate", "milestoneId", "linkedElementId", "linkedNoteId", "parentTaskId"].includes(key)) values[key] = value || null;
+        else if (key === "dependsOnIds") values[key] = Array.isArray(value) ? [...new Set(value.map(String).filter(Boolean))].slice(0, 100) : [];
         else if (key === "status") values[key] = String(value || (item.kind === "milestone" ? "upcoming" : "todo"));
         else if (key === "priority") values[key] = String(value || "medium");
         else values[key] = value || new Date().toISOString();
@@ -300,23 +312,122 @@ export function writeProjectItemsToYjs(doc, items = [], origin = LOCAL_SCENE_ORI
 }
 
 const DESIGN_STUDIO_MAP = "arcdraw.design.studio.v1";
+
+function asYMap(parent, key) {
+  let value = parent.get(key);
+  if (!(value instanceof Y.Map)) {
+    const legacy = value;
+    value = new Y.Map();
+    parent.set(key, value);
+    const parsed = parseJson(legacy, null);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      for (const [field, fieldValue] of Object.entries(parsed)) value.set(field, fieldValue);
+    }
+  }
+  return value;
+}
+
+function encodeStudioRecord(record) {
+  return JSON.stringify(record);
+}
+
+function decodeStudioRecord(value) {
+  return value instanceof Y.Map ? Object.fromEntries(value.entries()) : parseJson(value, null);
+}
+
 export function readDesignStudioFromYjs(doc) {
-  const value = doc.getMap(DESIGN_STUDIO_MAP).get("document");
-  const parsed = parseJson(value, null);
-  return {
-    tokens: Array.isArray(parsed?.tokens) ? parsed.tokens : [],
-    components: Array.isArray(parsed?.components) ? parsed.components : []
+  const map = doc.getMap(DESIGN_STUDIO_MAP);
+  // Read pre-upgrade rooms without forcing an immediate rewrite.
+  const legacy = parseJson(map.get("document"), null);
+  if (legacy) return {
+    tokens: Array.isArray(legacy.tokens) ? legacy.tokens : [],
+    components: Array.isArray(legacy.components) ? legacy.components : []
   };
+  const tokensMap = map.get("tokens");
+  const componentsMap = map.get("components");
+  const tokens = tokensMap instanceof Y.Map ? [...tokensMap.entries()].map(([, value]) => decodeStudioRecord(value)).filter(Boolean) : [];
+  const components = componentsMap instanceof Y.Map ? [...componentsMap.entries()].map(([, value]) => decodeStudioRecord(value)).filter(Boolean) : [];
+  return { tokens, components };
 }
 
 export function writeDesignStudioToYjs(doc, designStudio = {}, origin = LOCAL_SCENE_ORIGIN) {
   const map = doc.getMap(DESIGN_STUDIO_MAP);
   const safe = {
-    tokens: Array.isArray(designStudio.tokens) ? designStudio.tokens.slice(0, 100) : [],
-    components: Array.isArray(designStudio.components) ? designStudio.components.slice(0, 100) : []
+    tokens: Array.isArray(designStudio.tokens) ? designStudio.tokens.slice(0, 200) : [],
+    components: Array.isArray(designStudio.components) ? designStudio.components.slice(0, 200) : []
   };
-  const encoded = JSON.stringify(safe);
-  if (map.get("document") !== encoded) doc.transact(() => map.set("document", encoded), origin);
+  doc.transact(() => {
+    const legacy = parseJson(map.get("document"), null);
+    if (legacy) {
+      map.delete("document");
+      const oldTokens = asYMap(map, "tokens");
+      const oldComponents = asYMap(map, "components");
+      for (const token of Array.isArray(legacy.tokens) ? legacy.tokens : []) if (token?.id) oldTokens.set(String(token.id), encodeStudioRecord(token));
+      for (const component of Array.isArray(legacy.components) ? legacy.components : []) if (component?.id) oldComponents.set(String(component.id), encodeStudioRecord(component));
+    }
+    const tokens = asYMap(map, "tokens");
+    const components = asYMap(map, "components");
+    const incomingTokens = new Map(safe.tokens.filter((item) => item?.id).map((item) => [String(item.id), item]));
+    const incomingComponents = new Map(safe.components.filter((item) => item?.id).map((item) => [String(item.id), item]));
+    for (const id of [...tokens.keys()]) if (!incomingTokens.has(id)) tokens.delete(id);
+    for (const id of [...components.keys()]) if (!incomingComponents.has(id)) components.delete(id);
+    for (const [id, item] of incomingTokens) {
+      const encoded = encodeStudioRecord(item);
+      if (tokens.get(id) !== encoded) tokens.set(id, encoded);
+    }
+    for (const [id, item] of incomingComponents) {
+      const encoded = encodeStudioRecord(item);
+      if (components.get(id) !== encoded) components.set(id, encoded);
+    }
+  }, origin);
+}
+
+function readDiscussionMap(doc, mapName) {
+  const map = doc.getMap(mapName);
+  const values = [];
+  for (const [id, encoded] of map.entries()) {
+    const record = encoded instanceof Y.Map ? Object.fromEntries(encoded.entries()) : parseJson(encoded, null);
+    if (record && !record.deletedAt) values.push({ ...record, id });
+  }
+  return values.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+}
+
+function writeDiscussionItem(doc, mapName, item, origin = LOCAL_SCENE_ORIGIN) {
+  if (!doc || !item?.id) return;
+  const map = doc.getMap(mapName);
+  const id = String(item.id);
+  doc.transact(() => {
+    let record = map.get(id);
+    if (!(record instanceof Y.Map)) {
+      const legacy = parseJson(record, null);
+      record = new Y.Map();
+      map.set(id, record);
+      if (legacy && typeof legacy === "object") {
+        for (const [key, value] of Object.entries(legacy)) record.set(key, value);
+      }
+    }
+    const allowed = mapName === DISCUSSION_MESSAGES_MAP
+      ? ["body", "authorId", "authorName", "authorAvatar", "createdAt", "editedAt"]
+      : ["body", "authorId", "authorName", "authorAvatar", "createdAt", "editedAt", "elementId", "resolved", "parentId"];
+    for (const key of allowed) {
+      if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
+      const value = item[key];
+      if (record.get(key) !== value) record.set(key, value);
+    }
+    if (!record.has("createdAt")) record.set("createdAt", new Date().toISOString());
+  }, origin);
+}
+
+export function readRoomMessages(doc) { return readDiscussionMap(doc, DISCUSSION_MESSAGES_MAP); }
+export function readRoomComments(doc) { return readDiscussionMap(doc, DISCUSSION_COMMENTS_MAP); }
+export function writeRoomMessage(doc, item, origin = LOCAL_SCENE_ORIGIN) {
+  writeDiscussionItem(doc, DISCUSSION_MESSAGES_MAP, item, origin);
+}
+export function writeRoomComment(doc, item, origin = LOCAL_SCENE_ORIGIN) {
+  writeDiscussionItem(doc, DISCUSSION_COMMENTS_MAP, item, origin);
+}
+export function readRoomDiscussion(doc) {
+  return { messages: readRoomMessages(doc), comments: readRoomComments(doc) };
 }
 
 function countMapChanges(beforeMap, afterMap) {
@@ -347,7 +458,8 @@ function elementMap(doc) {
  * that was undone does not count.
  */
 export function summarizeDocDifference(baseDoc, draftDoc) {
-  if (!baseDoc || !draftDoc) return { elements: { added: 0, updated: 0, deleted: 0 }, files: { added: 0, updated: 0, deleted: 0 }, notes: { added: 0, updated: 0, deleted: 0 }, projectItems: { added: 0, updated: 0, deleted: 0 }, total: 0 };
+  const empty = { added: 0, updated: 0, deleted: 0 };
+  if (!baseDoc || !draftDoc) return { elements: empty, files: empty, notes: empty, projectItems: empty, messages: empty, comments: empty, designStudio: empty, total: 0 };
   const elements = countMapChanges(elementMap(baseDoc), elementMap(draftDoc));
   const files = countMapChanges(
     new Map([...baseDoc.getMap("arcdraw.files.v1").entries()].map(([id, value]) => [id, canonicalJson(value)])),
@@ -360,6 +472,20 @@ export function summarizeDocDifference(baseDoc, draftDoc) {
     return [item.id, JSON.stringify(rest)];
   }));
   const projectItems = countMapChanges(itemList(baseDoc), itemList(draftDoc));
-  const total = [elements, files, notes, projectItems].reduce((sum, part) => sum + part.added + part.updated + part.deleted, 0);
-  return { elements, files, notes, projectItems, total };
+  const discussionMap = (doc, mapName) => new Map(readDiscussionMap(doc, mapName).map((item) => {
+    const { updatedAt, editedAt, ...rest } = item;
+    return [item.id, JSON.stringify(rest)];
+  }));
+  const messages = countMapChanges(discussionMap(baseDoc, DISCUSSION_MESSAGES_MAP), discussionMap(draftDoc, DISCUSSION_MESSAGES_MAP));
+  const comments = countMapChanges(discussionMap(baseDoc, DISCUSSION_COMMENTS_MAP), discussionMap(draftDoc, DISCUSSION_COMMENTS_MAP));
+  const studioList = (doc) => {
+    const value = readDesignStudioFromYjs(doc);
+    return new Map([
+      ...(value.tokens || []).map((item) => [`token:${item.id}`, JSON.stringify(item)]),
+      ...(value.components || []).map((item) => [`component:${item.id}`, JSON.stringify(item)])
+    ]);
+  };
+  const designStudio = countMapChanges(studioList(baseDoc), studioList(draftDoc));
+  const total = [elements, files, notes, projectItems, messages, comments, designStudio].reduce((sum, part) => sum + part.added + part.updated + part.deleted, 0);
+  return { elements, files, notes, projectItems, messages, comments, designStudio, total };
 }

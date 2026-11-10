@@ -76,6 +76,14 @@ export function summarizeSceneChange(beforeScene, afterScene) {
   const beforeProjectItems = (beforeScene?.projectItems || []).filter((item) => !item.deletedAt);
   const afterProjectItems = (afterScene?.projectItems || []).filter((item) => !item.deletedAt);
   const projectItems = countChanges(beforeProjectItems, afterProjectItems, (item) => item.id);
+  const discussionChanges = (key) => countChanges(beforeScene?.[key] || [], afterScene?.[key] || [], (item) => item.id);
+  const messages = discussionChanges("messages");
+  const comments = discussionChanges("comments");
+  const designStudio = countChanges(
+    [...(beforeScene?.designStudio?.tokens || []), ...(beforeScene?.designStudio?.components || [])],
+    [...(afterScene?.designStudio?.tokens || []), ...(afterScene?.designStudio?.components || [])],
+    (item) => item.id
+  );
   return {
     elementsAdded: elements.added,
     elementsUpdated: elements.updated,
@@ -88,7 +96,16 @@ export function summarizeSceneChange(beforeScene, afterScene) {
     notesDeleted: notes.deleted,
     projectItemsAdded: projectItems.added,
     projectItemsUpdated: projectItems.updated,
-    projectItemsDeleted: projectItems.deleted
+    projectItemsDeleted: projectItems.deleted,
+    messagesAdded: messages.added,
+    messagesUpdated: messages.updated,
+    messagesDeleted: messages.deleted,
+    commentsAdded: comments.added,
+    commentsUpdated: comments.updated,
+    commentsDeleted: comments.deleted,
+    designStudioAdded: designStudio.added,
+    designStudioUpdated: designStudio.updated,
+    designStudioDeleted: designStudio.deleted
   };
 }
 

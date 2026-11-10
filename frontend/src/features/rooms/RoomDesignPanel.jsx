@@ -20,9 +20,9 @@ function layerName(element, index) {
 
 export default function RoomDesignPanel({
   elements = [], selectedElementIds = [], designStudio = { tokens: [], components: [] },
-  readOnly = false, onClose, onCreateFrame, onSaveComponent, onSaveVariant,
-  onInsertComponent, onSaveStudio, onApplyToken, onAutoLayout,
-  onSelectElement, onUpdateElements, onMoveLayer, onRenameFrame, onDeleteFrame, onPresent
+  readOnly = false, onClose, onCreateFrame, onSaveComponent, onUpdateComponent, onSaveVariant,
+  onInsertComponent, onUpdateInstanceProperty, onSaveStudio, onApplyToken, onAutoLayout,
+  onSelectElement, onUpdateElements, onGroupSelected, onUngroupSelected, onMoveLayer, onRenameFrame, onDeleteFrame, onPresent
 }) {
   const [tab, setTab] = useState("layers");
   const [tokenName, setTokenName] = useState("");
@@ -38,6 +38,9 @@ export default function RoomDesignPanel({
   const selectedCount = selectedElementIds.length;
   const components = designStudio?.components || [];
   const tokens = designStudio?.tokens || [];
+  const selectedInstanceElement = elements.find((element) => selectedElementIds.includes(element.id) && element.customData?.arcdrawComponentInstance);
+  const selectedInstance = selectedInstanceElement?.customData?.arcdrawComponentInstance || null;
+  const selectedInstanceComponent = selectedInstance ? components.find((item) => item.id === selectedInstance.componentId) : null;
 
   const updateLayer = (id, patch) => {
     if (readOnly) return;
@@ -97,6 +100,7 @@ export default function RoomDesignPanel({
 
       {tab === "layers" && <div className="design-panel-content">
         <div className="design-section-heading"><div><strong>Canvas layers</strong><span>{visibleElements.length} objects · top layer first</span></div><span className="design-selected-count">{selectedCount} selected</span></div>
+        {!readOnly && <div className="design-group-actions"><button type="button" disabled={selectedCount < 2} onClick={onGroupSelected}>Group selected</button><button type="button" disabled={!selectedCount} onClick={onUngroupSelected}>Ungroup selected</button></div>}
         {visibleElements.length ? <div className="design-layer-list">{visibleElements.map((element, index) => <article className={`design-layer-row ${selectedElementIds.includes(element.id) ? "selected" : ""} ${element.isDeleted ? "hidden" : ""}`} key={element.id}>
           <button className="design-layer-select" type="button" onClick={() => onSelectElement(element)} disabled={readOnly}><span className="design-layer-kind">{element.type === "text" ? "T" : element.type === "image" ? "▧" : "◇"}</span><span>{layerName(element, visibleElements.length - index - 1)}</span></button>
           {!readOnly && <div className="design-layer-actions"><button type="button" onClick={() => onMoveLayer?.(element.id, "up")} title="Move layer up"><ArrowUp size={13} /></button><button type="button" onClick={() => onMoveLayer?.(element.id, "down")} title="Move layer down"><ArrowDown size={13} /></button><button type="button" onClick={() => updateLayer(element.id, { isDeleted: !element.isDeleted })} title={element.isDeleted ? "Show layer" : "Hide layer"}>{element.isDeleted ? <EyeOff size={13} /> : <Eye size={13} />}</button><button type="button" onClick={() => updateLayer(element.id, { locked: !element.locked })} title={element.locked ? "Unlock layer" : "Lock layer"}>{element.locked ? <Lock size={13} /> : <LockOpen size={13} />}</button></div>}
@@ -118,7 +122,16 @@ export default function RoomDesignPanel({
         {!readOnly && <form className="design-create-component" onSubmit={saveComponent}><input maxLength={80} value={componentName} onChange={(event) => setComponentName(event.target.value)} placeholder={selectedCount ? "Name the selected component" : "Select canvas elements first"} disabled={!selectedCount} /><button type="submit" disabled={!selectedCount || !componentName.trim()}><PackagePlus size={14} /> Save</button></form>}
         {components.length ? <div className="design-component-list">{components.map((component) => <article className={`design-component-card ${selectedComponentId === component.id ? "active" : ""}`} key={component.id}>
           <button type="button" className="design-component-main" onClick={() => setSelectedComponentId(component.id)}><span className="design-component-preview"><Box size={19} /></span><span><strong>{component.name}</strong><small>{component.elements?.length || 0} elements · {component.variants?.length || 1} variants</small></span><ChevronDown size={13} /></button>
-          {selectedComponentId === component.id && <div className="design-component-details"><div className="design-variant-list">{(component.variants?.length ? component.variants : [{ id: "default", name: "Default" }]).map((variant) => <button type="button" key={variant.id} onClick={() => onInsertComponent(component, variant.id)} disabled={readOnly}><span>{variant.name}</span><Plus size={12} /></button>)}</div><div className="design-component-actions">{!readOnly && <button type="button" onClick={() => onSaveVariant?.(component.id, `Variant ${(component.variants?.length || 1) + 1}`)}><Plus size={12} /> Save selection as variant</button>}<button type="button" className="design-delete-action" onClick={() => deleteComponent(component.id)} disabled={readOnly}><Trash2 size={12} /> Remove</button></div></div>}
+          {selectedComponentId === component.id && <div className="design-component-details">
+            <div className="design-component-meta">Revision {component.revision || 1} · {component.properties?.length || 0} properties · Update master + instances to publish changes</div>
+            <div className="design-variant-list">{(component.variants?.length ? component.variants : [{ id: "default", name: "Default" }]).map((variant) => <button type="button" key={variant.id} onClick={() => onInsertComponent(component, variant.id)} disabled={readOnly}><span>{variant.name}</span><Plus size={12} /></button>)}</div>
+            {selectedInstanceComponent?.id === component.id && ((component.variants || []).find((variant) => variant.id === selectedInstance?.variantId)?.properties || component.properties || []).length > 0 && <div className="design-instance-properties"><strong>Selected instance properties</strong>{((component.variants || []).find((variant) => variant.id === selectedInstance?.variantId)?.properties || component.properties || []).map((property) => {
+              const stored = selectedInstance?.overrides?.[property.id];
+              const value = stored !== undefined ? stored : property.defaultValue;
+              return <label key={property.id}><span>{property.name}</span>{property.type === "boolean" ? <input type="checkbox" checked={Boolean(value)} disabled={readOnly} onChange={(event) => onUpdateInstanceProperty?.(component.id, selectedInstance.groupId, property, event.target.checked)} /> : property.type === "color" ? <span className="design-instance-color"><input type="color" value={/^#[0-9a-f]{6}$/i.test(String(value)) ? value : "#ffffff"} disabled={readOnly} onChange={(event) => onUpdateInstanceProperty?.(component.id, selectedInstance.groupId, property, event.target.value)} /><code>{value}</code></span> : <input type="text" maxLength={500} value={String(value ?? "")} disabled={readOnly} onChange={(event) => onUpdateInstanceProperty?.(component.id, selectedInstance.groupId, property, event.target.value)} />}</label>;
+            })}</div>}
+            <div className="design-component-actions">{!readOnly && <button type="button" onClick={() => onUpdateComponent?.(component.id)} disabled={!selectedCount}><Check size={12} /> Update master + instances</button>}{!readOnly && <button type="button" onClick={() => onSaveVariant?.(component.id, `Variant ${(component.variants?.length || 1) + 1}`)} disabled={!selectedCount}><Plus size={12} /> Save variant</button>}<button type="button" className="design-delete-action" onClick={() => deleteComponent(component.id)} disabled={readOnly}><Trash2 size={12} /> Remove</button></div>
+          </div>}
         </article>)}</div> : <div className="design-empty"><Box size={20} /><strong>No components saved</strong><span>Select a group of objects on the canvas and save it here for reuse.</span></div>}
         <div className="design-panel-tip">Variants capture the current selection as another reusable version. Insert any saved variant back onto the canvas.</div>
       </div>}

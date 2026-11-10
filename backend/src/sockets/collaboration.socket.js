@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import User from "../models/User.model.js";
+import RefreshSession from "../models/RefreshSession.model.js";
 import { AUTH_COOKIE_NAMES } from "../constants/auth.constants.js";
 import { verifyAccessToken } from "../services/token.service.js";
 import { getBoardAccess, assertCanEdit } from "../services/board-access.service.js";
@@ -129,6 +130,9 @@ export function attachCollaborationSocket(httpServer, env) {
       const token = readCookie(socket.request.headers.cookie, AUTH_COOKIE_NAMES.access);
       if (!token) return next(new Error("Sign in to collaborate."));
       const payload = verifyAccessToken(token);
+      if (!payload.sid) return next(new Error("Sign in to collaborate."));
+      const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
+      if (!session) return next(new Error("Your session has expired. Sign in again."));
       const user = await User.findById(payload.sub).select("name avatarUrl").lean();
       if (!user) return next(new Error("Account not found."));
       socket.data.userId = String(user._id);

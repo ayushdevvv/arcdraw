@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { AUTH_COOKIE_NAMES, AUTH_PATH } from "../constants/auth.constants.js";
+import { AUTH_COOKIE_NAMES, AUTH_PATH, ACCESS_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
 
 function baseCookieOptions() {
   return {
@@ -10,12 +10,19 @@ function baseCookieOptions() {
   };
 }
 
-export function setAuthCookies(res, { accessToken }) {
+export function setAuthCookies(res, { accessToken, refreshToken }) {
   res.cookie(AUTH_COOKIE_NAMES.access, accessToken, {
     ...baseCookieOptions(),
     path: "/",
-    maxAge: env.SESSION_DAYS * 24 * 60 * 60 * 1000
+    maxAge: ACCESS_COOKIE_MAX_AGE_MS
   });
+  if (refreshToken) {
+    res.cookie(AUTH_COOKIE_NAMES.refresh, refreshToken, {
+      ...baseCookieOptions(),
+      path: AUTH_PATH,
+      maxAge: env.SESSION_DAYS * 24 * 60 * 60 * 1000
+    });
+  }
 }
 
 export function clearAuthCookies(res) {
