@@ -1,6 +1,6 @@
 # Arcdraw
 
-**Current milestone: Arcdraw web-first workspace preview (v0.11.0).**
+**Current milestone: Arcdraw web-first workspace preview (v0.11.1).**
 
 Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use an optional research agent to turn goals into approved work. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
 

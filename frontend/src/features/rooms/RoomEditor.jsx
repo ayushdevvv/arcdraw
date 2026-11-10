@@ -161,6 +161,9 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   const [clearOpen, setClearOpen] = useState(false);
   const [gridOn, setGridOn] = useState(readGridPreference);
   const apiRef = useRef(null);
+  // Keep every hook above the loading/error early returns.
+  // The image picker ref is used by toolbar actions after the room loads.
+  const imageInputRef = useRef(null);
   const saveTimer = useRef(null);
   const pendingScene = useRef(null);
   const pointerAreaRef = useRef(null);
@@ -1399,7 +1402,6 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     { type: "frame", label: "Frame", key: "F", icon: Frame },
     { type: "eraser", label: "Eraser", key: "0", icon: Eraser }
   ];
-  const imageInputRef = useRef(null);
   const makeElementId = () => globalThis.crypto?.randomUUID?.().replace(/-/g, "") || `arcdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const randomSeed = () => Math.floor(Math.random() * 2147483646) + 1;
 
