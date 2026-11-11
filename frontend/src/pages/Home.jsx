@@ -77,11 +77,11 @@ const FEATURES = [
     ]
   },
   {
-    key: "agent", icon: WandSparkles, title: "Agent", line: "Plans for you.", cta: "Try the agent",
+    key: "agent", icon: WandSparkles, title: "Design Agent", line: "Ideas become editable designs.", cta: "Open Design Agent",
     points: [
-      { icon: Search, title: "Researches", text: "Finds and cites sources." },
-      { icon: Sparkles, title: "Reads your room", text: "Boards, notes and tasks." },
-      { icon: ListChecks, title: "Makes tasks", text: "One click to add them." }
+      { icon: WandSparkles, title: "Prompt to canvas", text: "Describe it and generate the layout." },
+      { icon: Layers, title: "Native objects", text: "Edit every shape, text and sticky." },
+      { icon: Users, title: "Room synced", text: "Refine the design together." }
     ]
   }
 ];
@@ -145,7 +145,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
       <section className="hp-hero">
         <span className="hp-badge hp-rise" style={{ "--d": "0ms" }}><i /> New: commit and review mode for teams</span>
         <h1 className="hp-rise" style={{ "--d": "80ms" }}>The workspace where ideas become shipped work.</h1>
-        <p className="hp-lead hp-rise" style={{ "--d": "160ms" }}>Boards, notes, tasks and an AI agent in one calm room. Draw together live, or review every change before it lands.</p>
+        <p className="hp-lead hp-rise" style={{ "--d": "160ms" }}>Boards, notes, tasks and a Design Agent in one calm room. Describe an idea, build it on canvas and refine it together.</p>
         <div className="hp-actions hp-rise" style={{ "--d": "240ms" }}>
           <button className="primary-button hp-big" type="button" onClick={openBoards}><Shapes size={19} strokeWidth={1.8} /> Start a board</button>
           <button className="secondary-button hp-big" type="button" onClick={openNotes}><NotebookText size={19} strokeWidth={1.8} /> Write a note</button>
@@ -237,7 +237,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
             <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
             <p>Boards, notes and tasks in one calm workspace.</p>
           </div>
-          <div className="hp-footer-col"><strong>Product</strong><button type="button" onClick={goFeatures}>Boards</button><button type="button" onClick={goFeatures}>Notes</button><button type="button" onClick={goFeatures}>Project</button><button type="button" onClick={goFeatures}>Agent</button></div>
+          <div className="hp-footer-col"><strong>Product</strong><button type="button" onClick={goFeatures}>Boards</button><button type="button" onClick={goFeatures}>Notes</button><button type="button" onClick={goFeatures}>Project</button><button type="button" onClick={goFeatures}>Design Agent</button></div>
           <div className="hp-footer-col"><strong>Teams</strong><button type="button" onClick={goModes}>Live editing</button><button type="button" onClick={goModes}>Commit and review</button><button type="button" onClick={goSteps}>How it works</button></div>
           <div className="hp-footer-col"><strong>Account</strong><button type="button" onClick={handleSignIn}>{user ? "Open workspace" : "Sign in"}</button><button type="button" onClick={openWorkspace}>Workspace</button></div>
         </div>

@@ -34,4 +34,4 @@ Guest boards remain in IndexedDB under the existing guest ID. Signing in does no
 4. Start the client from `frontend/`.
 5. Open `http://localhost:5173/#/auth/login`.
 
-Without OAuth credentials, social buttons are intentionally hidden. Without SMTP in development, the backend can return `developmentOtp`; production requires an actual email provider.
+Without OAuth credentials, social buttons are intentionally hidden. Without Brevo configured in development, the backend can return `developmentOtp`; production requires a valid Brevo API key and verified sender.

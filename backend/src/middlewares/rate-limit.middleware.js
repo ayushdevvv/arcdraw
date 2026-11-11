@@ -22,7 +22,7 @@ export const sensitiveAuthRateLimiter = rateLimit({
   limit: 8
 });
 
-// Research requests can incur external provider usage. Keep the per-IP limit
+// Design-generation requests can incur external provider usage. Keep the per-IP limit
 // conservative; authenticated user-level quotas can be added with billing.
 export const agentRateLimiter = rateLimit({
   ...common,

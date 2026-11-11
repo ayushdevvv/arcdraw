@@ -1405,6 +1405,253 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   const makeElementId = () => globalThis.crypto?.randomUUID?.().replace(/-/g, "") || `arcdraw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const randomSeed = () => Math.floor(Math.random() * 2147483646) + 1;
 
+  const applyGeneratedDesign = (design) => {
+    const api = apiRef.current;
+    if (!api || readOnly) return false;
+    try {
+      const existing = api.getSceneElementsIncludingDeleted?.() || [];
+      const activeExisting = existing.filter((element) => !element.isDeleted);
+      const appState = api.getAppState?.() || {};
+
+      if (design?.mode === "update-selection") {
+        const selectedMap = appState.selectedElementIds || {};
+        const selectedIds = new Set(Object.entries(selectedMap).filter(([, selected]) => Boolean(selected)).map(([id]) => id));
+        const editById = new Map((design.edits || []).filter((edit) => selectedIds.has(edit.targetId)).map((edit) => [edit.targetId, edit]));
+        const updatedAt = Date.now();
+        const next = existing.map((element) => {
+          const edit = !element.isDeleted ? editById.get(element.id) : null;
+          if (!edit) return element;
+          const updated = {
+            ...element,
+            version: Math.max(1, Number(element.version) || 1) + 1,
+            versionNonce: randomSeed(),
+            updated: updatedAt
+          };
+          if (edit.text !== null && edit.text !== undefined && ["text"].includes(element.type)) {
+            updated.text = edit.text;
+            updated.originalText = edit.text;
+          }
+          if (edit.fillColor && !["text", "line", "arrow", "freedraw"].includes(element.type)) updated.backgroundColor = edit.fillColor;
+          if (edit.strokeColor) updated.strokeColor = edit.strokeColor;
+          if (edit.textColor && element.type === "text") updated.strokeColor = edit.textColor;
+          if (edit.fontSize !== null && edit.fontSize !== undefined && element.type === "text") {
+            updated.fontSize = edit.fontSize;
+            updated.baseline = Math.round(edit.fontSize * 1.25);
+          }
+          for (const field of ["x", "y", "width", "height", "opacity"]) {
+            if (edit[field] !== null && edit[field] !== undefined) updated[field] = edit[field];
+          }
+          if (edit.radius !== null && edit.radius !== undefined && !["text", "line", "arrow", "freedraw"].includes(element.type)) {
+            updated.roundness = edit.radius > 0 ? { type: 3 } : null;
+          }
+          return updated;
+        });
+        const changed = next.filter((element, index) => element !== existing[index]);
+        if (!changed.length) {
+          flash("The objects from the preview are no longer selected. Select them again and regenerate the change.");
+          return false;
+        }
+        const nextAppState = { ...appState, selectedElementIds: selectedMap };
+        api.updateScene({ elements: next, appState: { selectedElementIds: selectedMap } });
+        const scene = { elements: next, appState: nextAppState, files: api.getFiles?.() || {} };
+        pendingScene.current = scene;
+        if (cloudBoardId && collab.role !== "viewer") collab.publishScene(scene);
+        setSaveStatus("saving");
+        window.clearTimeout(saveTimer.current);
+        saveTimer.current = window.setTimeout(() => { void flushSave(); }, 0);
+        api.scrollToContent?.(changed, { fitToContent: true, animate: true });
+        flash(`Updated ${changed.length} selected object${changed.length === 1 ? "" : "s"}.`);
+        return true;
+      }
+
+      if (!design?.elements?.length) return false;
+      const zoom = appState.zoom?.value || 1;
+      const host = pointerAreaRef.current?.getBoundingClientRect();
+      const sceneWidth = (host?.width || window.innerWidth) / zoom;
+      const sceneHeight = (host?.height || window.innerHeight) / zoom;
+      let originX = -(appState.scrollX || 0) + sceneWidth / 2 - design.canvas.width / 2;
+      let originY = -(appState.scrollY || 0) + sceneHeight / 2 - design.canvas.height / 2;
+      if (activeExisting.length) {
+        const rightEdge = Math.max(...activeExisting.map((element) => (element.x || 0) + (element.width || 0)));
+        const topEdge = Math.min(...activeExisting.map((element) => element.y || 0));
+        originX = rightEdge + 140;
+        originY = topEdge;
+      }
+
+      const groupIds = new Map();
+      const getGroupIds = (key) => {
+        if (!key) return [];
+        if (!groupIds.has(key)) groupIds.set(key, makeElementId());
+        return [groupIds.get(key)];
+      };
+      const makeCommon = (item, type, x, y, width, height, fillColor, strokeColor, textColor) => ({
+        id: makeElementId(), type, x, y, width: Math.max(1, width), height: Math.max(1, height), angle: 0,
+        strokeColor, backgroundColor: fillColor, fillStyle: "solid", strokeWidth: 1,
+        strokeStyle: "solid", roughness: 0, opacity: item.opacity ?? 100,
+        groupIds: getGroupIds(item.groupKey), frameId: null,
+        roundness: item.radius > 0 ? { type: 3 } : null,
+        seed: randomSeed(), version: 1, versionNonce: randomSeed(), isDeleted: false,
+        boundElements: null, updated: Date.now(), link: null, locked: false, status: "saved",
+        customData: { arcdrawAI: true, arcdrawAIName: item.name || "Generated element", arcdrawAIGroup: item.groupKey || null },
+        ...(textColor ? { customData: { arcdrawAI: true, arcdrawAIName: item.name || "Generated element", arcdrawAIGroup: item.groupKey || null } } : {})
+      });
+
+      let generated = [];
+      for (const item of [...design.elements].sort((a, b) => a.zIndex - b.zIndex)) {
+        const x = originX + item.x, y = originY + item.y;
+        const width = Math.max(1, item.width), height = Math.max(1, item.height);
+        if (item.type === "sticky") {
+          const stickyId = makeElementId();
+          const groupId = getGroupIds(item.groupKey || `sticky-${stickyId}`)[0];
+          const stickyBase = makeCommon({ ...item, groupKey: item.groupKey || `sticky-${stickyId}` }, "rectangle", x, y, width, height, item.fillColor === "transparent" ? "#fff0a8" : item.fillColor, item.strokeColor === "transparent" ? "#dfcf87" : item.strokeColor, null);
+          stickyBase.groupIds = [groupId];
+          stickyBase.customData = { arcdrawAI: true, arcdrawSticky: true, stickyId, arcdrawAIName: item.name || "AI sticky note" };
+          generated.push(stickyBase);
+          if (item.text) {
+            const text = makeCommon(item, "text", x + 14, y + 12, Math.max(40, width - 28), Math.max(32, height - 24), "transparent", item.textColor || "#363326", item.textColor || "#363326");
+            text.groupIds = [groupId];
+            text.fontSize = Math.max(14, item.fontSize || 17);
+            text.fontFamily = 6;
+            text.text = item.text;
+            text.originalText = item.text;
+            text.textAlign = item.textAlign || "left";
+            text.verticalAlign = "top";
+            text.baseline = Math.round(text.fontSize * 1.25);
+            text.containerId = null;
+            text.lineHeight = 1.25;
+            text.backgroundColor = "transparent";
+            text.customData = { arcdrawAI: true, arcdrawStickyText: true, stickyId };
+            generated.push(text);
+          }
+          continue;
+        }
+        if (item.type === "text") {
+          const text = makeCommon(item, "text", x, y, width, height, "transparent", item.textColor || "#161616", item.textColor || "#161616");
+          text.fontSize = item.fontSize || 16;
+          text.fontFamily = 6;
+          text.text = item.text || "";
+          text.originalText = item.text || "";
+          text.textAlign = item.textAlign || "left";
+          text.verticalAlign = "top";
+          text.baseline = Math.round(text.fontSize * 1.25);
+          text.containerId = null;
+          text.lineHeight = 1.25;
+          text.backgroundColor = "transparent";
+          generated.push(text);
+          continue;
+        }
+        if (item.type === "line" || item.type === "arrow") {
+          const line = makeCommon(item, item.type, x, y, width, height, "transparent", item.strokeColor === "transparent" ? "#777777" : item.strokeColor, null);
+          line.points = [[0, 0], [width, height]];
+          line.startBinding = null;
+          line.endBinding = null;
+          line.startArrowhead = null;
+          line.endArrowhead = item.type === "arrow" ? "arrow" : null;
+          line.elbowed = false;
+          line.lastCommittedPoint = null;
+          generated.push(line);
+          continue;
+        }
+        const shape = makeCommon(item, item.type, x, y, width, height, item.fillColor, item.strokeColor, null);
+        generated.push(shape);
+      }
+
+      if (!activeExisting.length && design.canvas?.backgroundColor) {
+        const background = makeCommon({ name: "Design canvas background", opacity: 100, radius: 0 }, "rectangle", originX, originY, design.canvas.width, design.canvas.height, design.canvas.backgroundColor, "transparent", null);
+        background.groupIds = [];
+        background.customData = { arcdrawAI: true, arcdrawAIBackdrop: true };
+        generated.unshift(background);
+      }
+
+      const generatedComponents = [];
+      const generatedReplacements = new Map();
+      for (const definition of (design.componentDefinitions || []).slice(0, 8)) {
+        const masterGroup = generated.filter((element) => element.customData?.arcdrawAIGroup === definition.masterGroupKey);
+        if (!masterGroup.length || masterGroup.some((element) => element.customData?.arcdrawSticky)) continue;
+        const componentId = makeElementId();
+        const masterElements = masterGroup.map((element) => ({
+          ...JSON.parse(JSON.stringify(element)),
+          customData: { ...(element.customData || {}), arcdrawComponentMaster: componentId }
+        }));
+        masterElements.forEach((element) => generatedReplacements.set(element.id, element));
+        const componentProperties = inferComponentProperties(masterElements);
+        const variants = [{ id: "default", name: "Default", elements: masterElements, properties: componentProperties }];
+
+        for (const variant of (definition.variants || []).slice(0, 5)) {
+          const variantElements = generated.filter((element) => element.customData?.arcdrawAIGroup === variant.groupKey);
+          if (!variantElements.length || variantElements.some((element) => element.customData?.arcdrawSticky)) continue;
+          const snapshot = variantElements.map((element) => {
+            const customData = { ...(element.customData || {}) };
+            delete customData.arcdrawAIGroup;
+            return { ...JSON.parse(JSON.stringify(element)), customData: { ...customData, arcdrawComponentMaster: componentId } };
+          });
+          variants.push({ id: makeElementId(), name: String(variant.name || "Variant").slice(0, 60), elements: snapshot, properties: inferComponentProperties(snapshot) });
+        }
+
+        const linkedInstances = [];
+        for (const instanceKey of (definition.instanceGroupKeys || []).slice(0, 8)) {
+          const instanceElements = generated.filter((element) => element.customData?.arcdrawAIGroup === instanceKey);
+          if (!instanceElements.length || instanceElements.length !== masterElements.length || instanceElements.some((element) => element.customData?.arcdrawSticky)) continue;
+          const groupId = instanceElements[0]?.groupIds?.[0] || makeElementId();
+          const instanceId = makeElementId();
+          instanceElements.forEach((element, index) => {
+            const customData = { ...(element.customData || {}) };
+            delete customData.arcdrawComponentMaster;
+            generatedReplacements.set(element.id, {
+              ...element,
+              customData: {
+                ...customData,
+                arcdrawSourceElementId: masterElements[index].id,
+                arcdrawComponentInstance: { componentId, variantId: "default", groupId, instanceId, revision: 1, overrides: {} }
+              }
+            });
+          });
+          linkedInstances.push(instanceKey);
+        }
+
+        generatedComponents.push({
+          id: componentId,
+          name: String(definition.name || "AI component").slice(0, 80),
+          elements: masterElements,
+          variants,
+          properties: componentProperties,
+          revision: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          generatedBy: "arcdraw-ai",
+          linkedInstances: linkedInstances.length
+        });
+      }
+      if (generatedReplacements.size) generated = generated.map((element) => generatedReplacements.get(element.id) || element);
+
+      const next = [...existing, ...generated];
+      const selectedElementIds = Object.fromEntries(generated.filter((element) => !element.customData?.arcdrawAIBackdrop).map((element) => [element.id, true]));
+      const nextAppState = { ...appState, selectedElementIds };
+      api.updateScene({ elements: next, appState: { selectedElementIds } });
+      const scene = { elements: next, appState: nextAppState, files: api.getFiles?.() || {} };
+      pendingScene.current = scene;
+      if (cloudBoardId && collab.role !== "viewer") collab.publishScene(scene);
+      if (generatedComponents.length) {
+        const existingNames = new Set((designStudio.components || []).map((component) => component.name.toLowerCase()));
+        const additions = generatedComponents.filter((component) => !existingNames.has(component.name.toLowerCase()));
+        if (additions.length) {
+          void saveDesignStudio({ ...designStudio, components: [...(designStudio.components || []), ...additions] })
+            .catch((error) => { console.error("Generated component library save failed:", error); flash("The design was added, but a reusable component could not be saved to the library."); });
+        }
+      }
+      setSaveStatus("saving");
+      window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => { void flushSave(); }, 0);
+      api.scrollToContent?.(generated.filter((element) => !element.customData?.arcdrawAIBackdrop), { fitToContent: true, animate: true });
+      flash(`Added ${generated.length} editable objects to the canvas.`);
+      return true;
+    } catch (error) {
+      console.error("AI design apply failed:", error);
+      flash(friendlyError(error, "The generated design could not be added to the canvas."));
+      return false;
+    }
+  };
+
   const insertImageFile = async (file) => {
     if (!file || !apiRef.current || readOnly) return;
     if (!file.type.startsWith("image/")) { flash("Choose an image file to add to the canvas."); return; }
@@ -1583,11 +1830,11 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
           room={board}
           notes={notes}
           elements={sceneElements}
-          projectItems={projectItems}
+          selectedElementIds={selectedElementIds}
           readOnly={readOnly}
           isAuthenticated={isAuthenticated}
           onRequireAccount={requireAgentAccount}
-          onSaveTasks={handleSaveProjectItem}
+          onApplyDesign={applyGeneratedDesign}
           onClose={closePanel}
         />
       )}

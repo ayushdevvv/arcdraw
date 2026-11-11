@@ -1,47 +1,54 @@
-# Arcdraw Agent — research and planning
+# ArcDraw Design Agent
 
-The Agent exists to solve one real gap: turning a loosely described room goal into a researched, gap-aware plan that can be converted into project tasks. It is not a general-purpose chat window and does not autonomously edit a room.
+The in-room agent turns a natural-language visual brief into a structured, editable canvas composition. It replaces the former research/task-planning panel. It does not return a screenshot: the frontend converts the validated design plan into native Excalidraw shapes, text, arrows, lines and grouped sticky notes.
 
-## Flow
+## Workflow
 
-1. The signed-in user enters a goal in a Board or Notes room.
-2. The client sends the prompt and a bounded context bundle (room title/type, up to 12 notes, up to 80 canvas text elements, and up to 30 existing tasks) to `POST /api/v1/agent/analyze`.
-3. If `TAVILY_API_KEY` is configured, the server sends a short search query derived from the prompt and room title to Tavily Search. Private note bodies and canvas content are not sent to Tavily.
-4. The server passes the bounded room context and Tavily snippets to the configured OpenAI-compatible model. The model returns structured JSON: summary, gaps, recommended approach, execution steps, candidate tasks and cautions.
-5. The user reviews the proposed tasks, selects the ones to keep, and explicitly approves adding them to the room Project. No canvas, note, milestone or existing task is silently modified.
+1. A signed-in user opens the Design Agent in a Board room and describes a screen, diagram, brainstorm or visual concept.
+2. The client sends the prompt and bounded room context (room title/type, object count and up to 12 selected object summaries) to `POST /api/v1/agent/design`.
+3. The endpoint streams progress events and keep-alive heartbeats so the panel can show live stages even during a slower model request.
+4. A LangGraph.js graph runs `prepare → compose → review`, with one conditional repair pass when validation finds a weak or malformed result.
+5. The compose and repair nodes call the configured Groq-compatible chat completions endpoint. The default model is `openai/gpt-oss-120b`; the request uses `reasoning_effort: medium` and `include_reasoning: false` (Groq documents these as GPT-OSS-supported controls).
+6. The server validates and normalizes object types, geometry, colors, text and element count before returning a design plan.
+7. The user previews the composition and explicitly chooses **Add editable design to canvas**.
+8. The client converts objects into native Excalidraw elements, saves the complete local scene and publishes it through the existing Yjs collaboration channel.
 
-## Configure providers
+The graph currently has no persistent checkpointer because a single design generation is a bounded request/response workflow, not a long-lived agent conversation. The room itself is the source of truth for the current canvas.
 
-Copy `backend/.env.example` to `backend/.env`, then add:
+## Install and configure
+
+The backend uses LangGraph.js. From the `backend` directory, run `npm install` after pulling this release so npm resolves and records the new LangGraph dependencies. `@langchain/langgraph` is pinned to `1.7.3` and `@langchain/core` to `1.3.6`. Run `npm install` in the backend directory on a network-connected machine; this resolves the pinned LangGraph packages and generates a fresh `package-lock.json`. Then commit that generated lockfile and use `npm ci` for repeatable deploys. The working environment used to prepare this archive could not reach the npm registry, so a regenerated lockfile is not included.
+
+Configure these server-only variables in `backend/.env` and in Render: 
 
 ```env
-AI_API_KEY=your-provider-key
+AI_API_KEY=your_groq_api_key
 AI_API_BASE_URL=https://api.groq.com/openai/v1
 AI_MODEL=openai/gpt-oss-120b
-TAVILY_API_KEY=your-tavily-key
-AI_REQUEST_TIMEOUT_MS=45000
+AI_REQUEST_TIMEOUT_MS=110000
 ```
 
-`AI_API_KEY` is required for the planner. `TAVILY_API_KEY` is optional: without it, the Agent still produces an AI-based plan and labels web research as not configured. If Tavily is temporarily unavailable, the Agent falls back to an AI-only plan and clearly labels search as unavailable. Provider keys stay on the server and must never be prefixed with `VITE_` or committed to source control.
+Never use a `VITE_` prefix for the Groq key. The key must never reach the browser. You do not need Tavily or a separate image-generation API for the current native-object generator. The agent creates shapes, text, connectors and sticky notes; generated photographic assets are not included in this release.
 
-The current Groq default model is `openai/gpt-oss-120b`; choose another model with JSON-object response support by changing `AI_MODEL`. The API base URL can be changed for another OpenAI-compatible endpoint.
+## Design quality and limits
 
-## Safety, privacy and limits
-
-- The endpoint requires an authenticated account and is rate limited to 8 requests per IP per 10 minutes.
-- The UI discloses that the prompt and relevant room context are sent to the configured model provider.
-- Tavily receives only the bounded search query, not the room's notes, canvas text or task list.
-- The model is instructed to treat room text and search snippets as untrusted reference data, not instructions.
-- Search results are shown as direct source links. Model recommendations should still be reviewed; they are not guaranteed to be correct.
-- This is a single-pass research/planning workflow, not an autonomous multi-tool execution loop. The only v1 write action is adding user-approved tasks.
-- The current client sends a bounded excerpt of each note and canvas text into the model context. Users should avoid submitting confidential content unless they accept the configured provider's data terms.
+- The system prompt sets a senior product-design quality bar: layout hierarchy, 8px spacing rhythm, controlled palette, readable type scale, realistic copy, deliberate grouping and restrained decoration.
+- The model returns a strict JSON Schema plan where supported by Groq. The server validates and bounds output before it reaches the client, including canvas bounds and reusable component group mappings.
+- A design is limited to 85 model-generated objects. Normal desktop compositions should use around 22–65 objects; compact diagrams can use fewer.
+- Supported native element types: rectangle, ellipse, diamond, text, line, arrow and sticky.
+- For a clear edit instruction with selected objects, the model returns a separate edit plan limited to the selected IDs. The client rechecks that those objects are still selected before applying property changes.
+- For create/add/build instructions, the client applies a generated design as a new grouped composition. It preserves existing canvas objects and places a new composition to the right of existing content.
+- When the model identifies repeated patterns, it declares a master group, matching instance groups and optional variants. On approval ArcDraw saves these into the room Design Studio library and tags the on-canvas copies with the existing instance metadata, so supported default instances can receive master updates. Preview is a lightweight layout representation, not a pixel-perfect raster render of Excalidraw. All applied objects remain editable.
+- Selected-object editing currently supports copy, fill/stroke/text color, font size, position, dimensions, opacity and corner-rounding updates on selected supported Excalidraw objects. It does not yet expose a full Figma property inspector or auto-layout constraint engine.
+- The endpoint requires an authenticated account and uses the existing per-IP agent rate limit.
 
 ## Manual test
 
-1. Without signing in, open Agent and confirm the account gate is shown.
-2. Sign in without `AI_API_KEY`; confirm the API reports that the provider is not configured.
-3. Add only `AI_API_KEY`; confirm the result says web search is not configured and does not claim research was performed.
-4. Add `TAVILY_API_KEY`; confirm sources appear and open in a new tab. Temporarily invalid/unavailable Tavily should degrade to an explicitly labelled AI-only plan instead of blocking the analysis.
-5. Ask for a plan; uncheck some candidate tasks and approve the rest. Confirm only selected tasks appear in Project.
-6. Confirm the original notes and canvas are unchanged.
-7. Send repeated requests from one IP and confirm the rate limit is enforced.
+1. Configure a valid Groq key and start the backend.
+2. Sign in and open a Board room.
+3. Ask for a premium desktop dashboard, landing page, mobile screen, flowchart and sticky-note brainstorm in separate runs.
+4. Watch the streamed progress stages; ensure the final preview lists object count, canvas dimensions and quality score.
+5. Apply a preview and confirm each element can be selected and edited in Excalidraw. Open Design Studio and check that any generated reusable masters/instances were added to the room library.
+6. Confirm the local room saves and a second collaborator receives the generated scene through Yjs.
+7. Repeat with a populated room and confirm the generated composition is placed beside existing objects rather than replacing them.
+8. Test invalid API key, provider timeout, viewer permission and an empty prompt.

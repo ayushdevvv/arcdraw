@@ -44,19 +44,15 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: optionalString,
   GITHUB_CALLBACK_URL: z.string().url().default("http://localhost:5000/api/v1/auth/github/callback"),
   OTP_HASH_SECRET: optionalSecret,
-  SMTP_HOST: optionalString,
-  SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_SECURE: booleanFromEnv(false),
-  SMTP_USER: optionalString,
-  SMTP_PASS: optionalString,
-  MAIL_FROM: z.string().default("Arcdraw <no-reply@example.com>"),
+  BREVO_API_KEY: optionalString,
+  MAIL_FROM_NAME: z.string().min(1).default("ArcDraw"),
+  MAIL_FROM_EMAIL: z.string().email().default("no-reply@example.com"),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
-  TAVILY_API_KEY: optionalString,
   AI_API_KEY: optionalString,
   AI_API_BASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   AI_MODEL: z.string().default("openai/gpt-oss-120b"),
-  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(10000).max(120000).default(45000)
+  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(10000).max(120000).default(110000)
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -94,5 +90,5 @@ export const env = Object.freeze({
   GOOGLE_OAUTH_ENABLED: Boolean(values.GOOGLE_CLIENT_ID && values.GOOGLE_CLIENT_SECRET),
   GITHUB_OAUTH_ENABLED: Boolean(values.GITHUB_CLIENT_ID && values.GITHUB_CLIENT_SECRET),
   OTP_HASH_SECRET: values.OTP_HASH_SECRET || values.JWT_ACCESS_SECRET,
-  EMAIL_ENABLED: Boolean(values.SMTP_HOST && values.SMTP_USER && values.SMTP_PASS)
+  EMAIL_ENABLED: Boolean(values.BREVO_API_KEY && values.MAIL_FROM_EMAIL)
 });

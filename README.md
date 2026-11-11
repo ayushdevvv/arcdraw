@@ -1,8 +1,8 @@
 # Arcdraw
 
-**Current milestone: Arcdraw web-first workspace preview (v0.11.1).**
+**Current milestone: Arcdraw web-first workspace preview (v0.12.0).**
 
-Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use an optional research agent to turn goals into approved work. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
+Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use the LangGraph-powered Design Agent to turn prompts into editable canvas compositions. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
 
 The repository contains two **independent npm projects**:
 
@@ -70,7 +70,7 @@ npm run dev
 
 API health check: `http://localhost:5000/api/v1/health`.
 
-Google/GitHub OAuth and SMTP are optional for local development. Provider setup is in `docs/google-oauth.md` and `docs/github-oauth.md`.
+Google/GitHub OAuth and Brevo email delivery are optional for local development. Provider setup is in `docs/google-oauth.md`, `docs/github-oauth.md`, and `docs/brevo-email.md`.
 
 ## Current features
 
@@ -95,7 +95,7 @@ Google/GitHub OAuth and SMTP are optional for local development. Provider setup 
 - Room library folders, room movement, and a bulk local-to-cloud migration action that keeps local copies intact. Folder metadata is currently local to each browser.
 - Project Kanban with drag-and-drop status changes, a list view, task/milestone links, subtasks, dependency relationships with cycle-prevention in the editor, and room-level assignments.
 - Board Design Studio with layers, grouping/ungrouping, frame presets, reusable component masters/instances, basic properties and variants, room color tokens, geometric auto layout and presentation mode. This remains an Excalidraw-backed design toolkit, not a complete native Figma replacement. See [`docs/design-studio.md`](docs/design-studio.md).
-- Arcdraw Agent: room-aware goal analysis, optional Tavily web research, gap analysis, recommended approach and proposed tasks. If Tavily is unavailable, analysis falls back to a clearly labelled AI-only plan. Only explicitly approved tasks are written into Project. Provider keys stay on the server.
+- ArcDraw Design Agent: LangGraph-powered natural-language-to-canvas generation using Groq `openai/gpt-oss-120b`. It creates a validated preview made from editable native canvas objects; users approve before applying it. Progress is streamed to the panel, and the resulting scene uses the existing local-save and Yjs sync flow. Provider keys stay on the server.
 - Same-Wi-Fi LAN-hosted collaboration setup using the existing Express + Socket.IO service. See [`docs/lan-collaboration.md`](docs/lan-collaboration.md).
 
 ## Collaboration setup and testing
@@ -148,7 +148,7 @@ arcdraw/
 - This version keeps active Yjs rooms in one server process. Multi-instance deployments need a shared Socket.IO adapter and coordinated persistence.
 - Same-element concurrent canvas edits are whole-element last-writer-wins, not property-level merges. Component master records are updated per component; independent component records/tokens no longer share one global serialized blob.
 - Folder organization is currently local to a browser; it is not a cloud team folder hierarchy.
-- Agent calls send the prompt and bounded room excerpts to the configured AI provider. Tavily receives only the search query. Review third-party provider data terms before sending confidential room content.
+- Design Agent calls send the prompt and up to 12 selected object summaries to the configured Groq-compatible AI provider. The provider key remains server-side. Review third-party provider data terms before sending confidential room content.
 - The current release is a web-first development preview. Desktop/Tauri is intentionally out of scope until the web app is stable. The production frontend build and live browser/device tests still need to be run in an environment with npm registry access. Multi-user conflict testing, cloud folder membership, asset backup recovery and multi-instance Socket.IO scaling remain release blockers.
 
 ## Working modes (room owner decides)

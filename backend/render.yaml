@@ -23,3 +23,29 @@ services:
         sync: false
       - key: API_PUBLIC_URL
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: ArcDraw
+      - key: MAIL_FROM_EMAIL
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_API_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: AI_MODEL
+        value: openai/gpt-oss-120b
+      - key: AI_REQUEST_TIMEOUT_MS
+        value: "110000"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        value: https://arcdraw.onrender.com/api/v1/auth/google/callback
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL
+        value: https://arcdraw.onrender.com/api/v1/auth/github/callback

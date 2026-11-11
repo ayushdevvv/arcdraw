@@ -14,7 +14,7 @@ Desktop/Tauri is intentionally deferred. This document separates working v1 capa
 
 ## Agent decision
 
-Arcdraw Agent addresses a concrete workflow gap: users can capture ideas in a canvas or notes, but converting those ideas into researched, prioritized work requires manually switching tools. Agent inspects bounded room context, optionally searches Tavily, returns gaps and a recommended approach, and proposes tasks. Users approve the tasks before they enter Project. It does not silently modify rooms and does not run a general autonomous tool loop. See [`agent.md`](agent.md).
+ArcDraw Design Agent turns a visual brief into a validated, editable canvas composition using LangGraph.js and Groq. Users preview the layout and approve before native objects are applied to the room. See [`agent.md`](agent.md).
 
 ## Recommended next development order
 
