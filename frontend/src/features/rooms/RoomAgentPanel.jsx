@@ -1,25 +1,109 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowUpRight, Check, CheckCircle2, Circle, Command, Layers3,
-  LoaderCircle, Palette, Plus, RotateCcw, ShieldCheck, Sparkles, WandSparkles, X
-} from "lucide-react";
+import { createPortal } from "react-dom";
+import { ArrowUp, Check, LayoutDashboard, LoaderCircle, LogIn, Presentation, RotateCcw, Smartphone, Sparkles, StickyNote, Wand2, X } from "lucide-react";
 import { generateRoomDesign } from "../../services/agentService.js";
 import "./room-agent.css";
 
-const SUGGESTIONS = [
-  "Design a premium dark SaaS analytics dashboard with a clear sidebar, revenue chart and recent activity.",
-  "Create a polished fintech mobile app screen with a balance card, spending chart and transaction list.",
-  "Build a clean product landing page with a bold hero, feature grid, product preview and pricing section.",
-  "Create a visual brainstorm board with grouped sticky notes, priorities and connecting arrows."
+const IDEAS = [
+  { id: "dash", label: "Dashboard", icon: LayoutDashboard, prompt: "Design a premium dark SaaS analytics dashboard with a clear sidebar, revenue chart and recent activity." },
+  { id: "mobile", label: "Mobile app", icon: Smartphone, prompt: "Create a polished fintech mobile app screen with a balance card, spending chart and transaction list." },
+  { id: "landing", label: "Landing page", icon: Presentation, prompt: "Build a clean product landing page with a bold hero, feature grid, product preview and pricing section." },
+  { id: "board", label: "Brainstorm", icon: StickyNote, prompt: "Create a visual brainstorm board with grouped sticky notes, priorities and connecting arrows." }
 ];
 
 const STAGES = [
-  { id: "understanding", label: "Understanding the brief", detail: "Reading your direction and room context" },
-  { id: "composing", label: "Composing the design", detail: "Building layout, type scale and components" },
-  { id: "reviewing", label: "Checking visual quality", detail: "Validating geometry and hierarchy" },
-  { id: "refining", label: "Polishing the result", detail: "Making final corrections" },
-  { id: "ready", label: "Ready for your canvas", detail: "Preparing editable objects" }
+  { id: "understanding", label: "Reading the brief" },
+  { id: "composing", label: "Composing layout" },
+  { id: "reviewing", label: "Checking quality" },
+  { id: "refining", label: "Polishing" },
+  { id: "ready", label: "Ready" }
 ];
+
+// Eases the shown percentage toward the real one and creeps a little so it never looks frozen.
+function useSmoothProgress(target, active) {
+  const [value, setValue] = useState(0);
+  useEffect(function () {
+    if (!active) {
+      setValue(0);
+      return undefined;
+    }
+    const id = window.setInterval(function () {
+      setValue(function (current) {
+        const goal = Math.max(target, 4);
+        if (current < goal) return Math.min(goal, current + Math.max(0.5, (goal - current) * 0.14));
+        const cap = goal >= 100 ? 100 : Math.min(goal + 6, 96);
+        return current < cap ? current + 0.05 : current;
+      });
+    }, 60);
+    return function () { window.clearInterval(id); };
+  }, [target, active]);
+  return Math.min(100, Math.round(value));
+}
+
+function previewStyle(element, canvas) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const style = {
+    left: Math.max(0, Math.min(100, (element.x / w) * 100)) + "%",
+    top: Math.max(0, Math.min(100, (element.y / h) * 100)) + "%",
+    width: Math.max(0.2, Math.min(100, (element.width / w) * 100)) + "%",
+    height: Math.max(0.2, Math.min(100, (element.height / h) * 100)) + "%",
+    opacity: (element.opacity == null ? 100 : element.opacity) / 100
+  };
+  if (element.type === "line" || element.type === "arrow") {
+    const horizontal = element.width >= element.height;
+    const color = element.strokeColor && element.strokeColor !== "transparent" ? element.strokeColor : (element.fillColor || "#888");
+    style.background = color;
+    if (horizontal) {
+      style.height = Math.max(0.25, (2 / w) * 100 * 1.6) + "cqw";
+      style.top = Math.max(0, Math.min(100, ((element.y + element.height / 2) / h) * 100)) + "%";
+    } else {
+      style.width = Math.max(0.25, (2 / w) * 100 * 1.6) + "cqw";
+      style.left = Math.max(0, Math.min(100, ((element.x + element.width / 2) / w) * 100)) + "%";
+    }
+    return style;
+  }
+  const isText = element.type === "text";
+  style.background = isText ? "transparent" : element.fillColor;
+  style.borderColor = element.strokeColor === "transparent" ? "transparent" : element.strokeColor;
+  style.borderRadius = element.type === "ellipse" ? "50%" : ((element.radius || 0) / w) * 100 + "cqw";
+  style.color = element.textColor;
+  style.fontSize = Math.max(0.9, (element.fontSize / w) * 100) + "cqw";
+  style.textAlign = element.textAlign;
+  return style;
+}
+
+function editFields(edit) {
+  return [
+    edit.text !== null ? "Copy" : null,
+    edit.fillColor ? "Fill" : null,
+    edit.strokeColor ? "Stroke" : null,
+    edit.textColor ? "Text color" : null,
+    edit.fontSize !== null ? "Type size" : null,
+    edit.x !== null || edit.y !== null ? "Position" : null,
+    edit.width !== null || edit.height !== null ? "Size" : null,
+    edit.opacity !== null ? "Opacity" : null,
+    edit.radius !== null ? "Corners" : null
+  ].filter(Boolean);
+}
+
+function SkeletonBuild() {
+  return (
+    <div className="ag-skeleton" aria-hidden="true">
+      <span className="ag-sk ag-sk-side" />
+      <span className="ag-sk ag-sk-top" />
+      <span className="ag-sk ag-sk-t1" />
+      <span className="ag-sk ag-sk-s1" />
+      <span className="ag-sk ag-sk-s2" />
+      <span className="ag-sk ag-sk-s3" />
+      <span className="ag-sk ag-sk-chart" />
+      <span className="ag-sk ag-sk-r1" />
+      <span className="ag-sk ag-sk-r2" />
+      <span className="ag-sk ag-sk-r3" />
+      <span className="ag-scan" />
+    </div>
+  );
+}
 
 export default function RoomAgentPanel({
   room, elements = [], selectedElementIds = [], readOnly = false, isAuthenticated = false,
@@ -33,32 +117,43 @@ export default function RoomAgentPanel({
   const [progress, setProgress] = useState({ stage: "", title: "", detail: "", progress: 0 });
   const [applied, setApplied] = useState(false);
   const controllerRef = useRef(null);
+  const textareaRef = useRef(null);
 
-  const selectedSet = useMemo(() => new Set(selectedElementIds || []), [selectedElementIds]);
-  const context = useMemo(() => ({
-    title: room?.title || "Untitled room",
-    kind: room?.kind || "board",
-    elementCount: (elements || []).filter((element) => !element.isDeleted).length,
-    selected: (elements || []).filter((element) => selectedSet.has(element.id)).slice(0, 12).map((element) => ({
-      id: element.id,
-      type: element.type,
-      text: element.text || element.originalText || "",
-      backgroundColor: element.backgroundColor,
-      strokeColor: element.strokeColor,
-      fontSize: element.fontSize,
-      opacity: element.opacity,
-      x: element.x, y: element.y, width: element.width, height: element.height
-    }))
-  }), [room?.title, room?.kind, elements, selectedSet]);
+  const selectedSet = useMemo(function () { return new Set(selectedElementIds || []); }, [selectedElementIds]);
+  const context = useMemo(function () {
+    const live = (elements || []).filter(function (element) { return !element.isDeleted; });
+    return {
+      title: room?.title || "Untitled room",
+      kind: room?.kind || "board",
+      elementCount: live.length,
+      selected: (elements || []).filter(function (element) { return selectedSet.has(element.id); }).slice(0, 12).map(function (element) {
+        return {
+          id: element.id, type: element.type, text: element.text || element.originalText || "",
+          backgroundColor: element.backgroundColor, strokeColor: element.strokeColor, fontSize: element.fontSize,
+          opacity: element.opacity, x: element.x, y: element.y, width: element.width, height: element.height
+        };
+      })
+    };
+  }, [room?.title, room?.kind, elements, selectedSet]);
 
-  useEffect(() => () => controllerRef.current?.abort(), []);
+  const isNotesRoom = room?.kind === "notes";
+  const shownPercent = useSmoothProgress(progress.progress || 0, busy);
+  const activeStageIndex = Math.max(0, STAGES.findIndex(function (item) { return item.id === progress.stage; }));
 
-  const runDesign = async (event) => {
+  useEffect(function () { return function () { controllerRef.current?.abort(); }; }, []);
+
+  useEffect(function () {
+    function onKey(event) { if (event.key === "Escape") onClose?.(); }
+    window.addEventListener("keydown", onKey);
+    return function () { window.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+
+  async function runDesign(event) {
     event?.preventDefault?.();
     if (prompt.trim().length < 8 || busy) return;
     if (!isAuthenticated) { onRequireAccount?.(); return; }
-    if (room?.kind === "notes") {
-      setError("Open a Board room to generate editable canvas designs. Your Notes room remains unchanged.");
+    if (isNotesRoom) {
+      setError("Open a Board room to generate designs.");
       setErrorCode("BOARD_ROOM_REQUIRED");
       return;
     }
@@ -67,18 +162,13 @@ export default function RoomAgentPanel({
     setErrorCode("");
     setDesign(null);
     setApplied(false);
-    setProgress({ stage: "queued", title: "Warming up the design studio", detail: "Preparing your room context.", progress: 4 });
+    setProgress({ stage: "queued", title: "Getting started", detail: "", progress: 4 });
     const controller = new AbortController();
     controllerRef.current = controller;
     try {
-      const response = await generateRoomDesign(prompt.trim(), context, {
-        signal: controller.signal,
-        onProgress: setProgress
-      });
+      const response = await generateRoomDesign(prompt.trim(), context, { signal: controller.signal, onProgress: setProgress });
       setDesign(response.design);
-      setApplied(false);
-      const readyCount = response.design.mode === "update-selection" ? response.design.edits.length : response.design.elements.length;
-      setProgress({ stage: "ready", title: "Your design is ready", detail: `${readyCount} ${response.design.mode === "update-selection" ? "selected changes" : "editable objects"} prepared.`, progress: 100 });
+      setProgress({ stage: "ready", title: "Ready", detail: "", progress: 100 });
     } catch (cause) {
       if (cause.code !== "AGENT_CANCELLED" && cause.name !== "AbortError") {
         setError(cause.message || "The Design Agent couldn't finish this design.");
@@ -88,151 +178,186 @@ export default function RoomAgentPanel({
       setBusy(false);
       controllerRef.current = null;
     }
-  };
+  }
 
-  const cancelGeneration = () => {
-    controllerRef.current?.abort();
-  };
+  function cancelGeneration() { controllerRef.current?.abort(); }
 
-  const applyDesign = () => {
+  function applyDesign() {
     if (!design || readOnly || applied) return;
     const result = onApplyDesign?.(design);
     if (result !== false) setApplied(true);
-  };
+  }
 
-  const editFields = (edit) => [
-    edit.text !== null ? "Copy" : null,
-    edit.fillColor ? "Fill" : null,
-    edit.strokeColor ? "Stroke" : null,
-    edit.textColor ? "Text color" : null,
-    edit.fontSize !== null ? "Type size" : null,
-    edit.x !== null || edit.y !== null ? "Position" : null,
-    edit.width !== null || edit.height !== null ? "Dimensions" : null,
-    edit.opacity !== null ? "Opacity" : null,
-    edit.radius !== null ? "Corners" : null
-  ].filter(Boolean);
+  function discardDesign() {
+    setDesign(null);
+    setApplied(false);
+    textareaRef.current?.focus();
+  }
 
-  const activeStageIndex = Math.max(0, STAGES.findIndex((item) => item.id === progress.stage));
-  const isNotesRoom = room?.kind === "notes";
+  function handleSignIn() { onRequireAccount?.(); }
+  function onPrompt(event) { setPrompt(event.target.value); }
+  function onPromptKey(event) {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") runDesign(event);
+  }
+  function pickIdea(idea) {
+    return function () {
+      setPrompt(idea.prompt);
+      textareaRef.current?.focus();
+    };
+  }
 
-  return (
-    <aside className="room-agent-panel" aria-label="ArcDraw Design Agent">
-      <header className="agent-panel-head">
-        <div className="agent-mark"><Sparkles size={19} /></div>
-        <div className="agent-head-copy"><p>ARCDRAW INTELLIGENCE</p><h2>Design Agent</h2></div>
-        <span className="agent-beta-tag">STUDIO</span>
-        <button type="button" className="agent-close" onClick={onClose} aria-label="Close Design Agent"><X size={17} /></button>
-      </header>
-
-      <div className="agent-context-strip">
-        <span className="agent-context-dot" />
-        <span>{isNotesRoom ? "Notes room" : "Board room"}</span>
-        <span className="agent-context-divider" />
-        <span>{context.elementCount} objects</span>
-        {context.selected.length > 0 && <span>{context.selected.length} selected</span>}
-      </div>
-
-      <div className="agent-composer-wrap">
-        <div className="agent-intro">
-          <div className="agent-intro-icon"><WandSparkles size={18} /></div>
-          <div>
-            <strong>Imagine it. I'll build it.</strong>
-            <span>Describe the screen, flow or visual you have in mind. Get an editable composition on your canvas, not a flat image.</span>
-          </div>
-        </div>
-        <form className="agent-composer" onSubmit={runDesign}>
-          <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            rows={5}
-            maxLength={2000}
-            placeholder={context.selected.length ? "Describe a new design, or say how to refine the selected objects…" : "A premium analytics dashboard for a climate-tech startup. Deep ink background, crisp typography, atmospheric green accents…"}
-            disabled={busy}
-          />
-          <div className="agent-composer-footer">
-            <span>{prompt.length.toLocaleString()}/2,000</span>
-            <button type="submit" disabled={busy || prompt.trim().length < 8 || readOnly || isNotesRoom}>
-              {busy ? <><LoaderCircle size={15} className="spin" /> Creating</> : <><Sparkles size={15} /> Generate design</>}
-            </button>
-          </div>
-        </form>
-        <div className="agent-capability-row">
-          <span><Layers3 size={12} /> Editable layers</span>
-          <span><Palette size={12} /> Design system</span>
-          <span><Command size={12} /> Room synced</span>
-        </div>
-        <p className="agent-privacy-note"><ShieldCheck size={13} /> Your prompt and selected object details are sent to the configured Groq model. The API key stays on the server. Generated elements are previewed before they are added.</p>
-        {!isAuthenticated && <p className="agent-account-note"><ShieldCheck size={13} /> Sign in to generate designs. Your local room stays on this device until you sync it.</p>}
-        {isNotesRoom && <p className="agent-account-note">Design generation is available in Board rooms. Switch to a Board room to place editable canvas elements.</p>}
-        {!design && !busy && <div className="agent-suggestion-list"><span>START WITH A DIRECTION</span>{SUGGESTIONS.map((suggestion) => <button type="button" key={suggestion} onClick={() => setPrompt(suggestion)}>{suggestion}<ArrowUpRight size={13} /></button>)}</div>}
-      </div>
-
-      {busy && (
-        <div className="agent-progress-card" aria-live="polite">
-          <div className="agent-progress-top"><span className="agent-live-indicator" /> <span>DESIGNING YOUR CANVAS</span><strong>{Math.max(4, progress.progress || 4)}%</strong><button type="button" className="agent-cancel-button" onClick={cancelGeneration}>Cancel</button></div>
-          <div className="agent-progress-track"><span style={{ width: `${Math.max(4, Math.min(100, progress.progress || 4))}%` }} /></div>
-          <div className="agent-progress-heading"><div className="agent-progress-orb"><Sparkles size={17} /></div><div><strong>{progress.title || "Working on your design"}</strong><span>{progress.detail || "The agent is preparing the composition."}</span></div></div>
-          <div className="agent-stage-list">{STAGES.map((stage, index) => {
-            const complete = progress.stage === "ready" || index < activeStageIndex;
-            const active = stage.id === progress.stage || (progress.stage === "queued" && index === 0);
-            return <div className={`agent-stage ${complete ? "is-complete" : ""} ${active ? "is-active" : ""}`} key={stage.id}>{complete ? <CheckCircle2 size={15} /> : active ? <LoaderCircle size={15} className="spin" /> : <Circle size={15} />}<span>{stage.label}</span></div>;
-          })}</div>
-        </div>
-      )}
-
-      {error && <div className="agent-error-state" role="alert"><strong>Couldn't complete this design</strong><span>{error}</span>{errorCode === "AGENT_NOT_CONFIGURED" && <small>Add AI_API_KEY to the backend environment and redeploy.</small>}{(errorCode === "AUTH_REQUIRED" || errorCode === "ACCESS_TOKEN_INVALID") && <small>Please sign in to use the Design Agent.</small>}</div>}
-
-      {design && !busy && (
-        <div className="agent-results">
-          <div className="agent-result-title"><div><span>DESIGN PREVIEW</span><h3>{design.title}</h3></div><button type="button" onClick={() => { setDesign(null); setApplied(false); }} title="Clear preview"><X size={15} /></button></div>
-          <p className="agent-design-description">{design.description}</p>
-          <div className="agent-design-stats">
-            <div><strong>{design.mode === "update-selection" ? design.edits.length : design.elements.length}</strong><span>{design.mode === "update-selection" ? "Selected edits" : "Editable objects"}</span></div>
-            <div><strong>{design.mode === "update-selection" ? context.selected.length : `${design.canvas.width} × ${design.canvas.height}`}</strong><span>{design.mode === "update-selection" ? "Selected objects" : "Canvas size"}</span></div>
-            <div><strong>{design.qualityScore || 0}</strong><span>Quality check</span></div>
-          </div>
-          {design.mode === "update-selection" ? (
-            <div className="agent-edit-preview" aria-label="Selected object changes">
-              <div className="agent-edit-preview-head"><span><CheckCircle2 size={14} /> CHANGE PREVIEW</span><small>{design.edits.length} object{design.edits.length === 1 ? "" : "s"}</small></div>
-              {design.edits.map((edit) => <div className="agent-edit-preview-item" key={edit.targetId}>
-                <div><strong>{edit.name}</strong><small>Selected object · {edit.targetId.slice(0, 8)}</small></div>
-                <div className="agent-component-chips">{editFields(edit).map((field) => <span key={field}>{field}</span>)}</div>
-              </div>)}
+  function renderStage() {
+    if (busy) {
+      return (
+        <div className="ag-loading" aria-live="polite">
+          <div className="ag-frame"><SkeletonBuild /></div>
+          <div className="ag-loadmeta">
+            <strong className="ag-percent">{shownPercent}<small>%</small></strong>
+            <div className="ag-loadtext">
+              <b>{progress.title || "Designing"}</b>
+              <span>{STAGES[activeStageIndex]?.label || "Working"}</span>
             </div>
-          ) : <div className="agent-design-preview" aria-label="Generated design preview">
-            <div className="agent-preview-canvas" style={{ background: design.canvas.backgroundColor, aspectRatio: `${design.canvas.width} / ${design.canvas.height}` }}>
-              {design.elements.slice(0, 42).map((element, index) => {
-                const style = {
-                  left: `${Math.max(0, Math.min(100, (element.x / design.canvas.width) * 100))}%`,
-                  top: `${Math.max(0, Math.min(100, (element.y / design.canvas.height) * 100))}%`,
-                  width: `${Math.max(0.8, Math.min(100, (element.width / design.canvas.width) * 100))}%`,
-                  height: `${Math.max(0.8, Math.min(100, (element.height / design.canvas.height) * 100))}%`,
-                  background: element.type === "text" || element.type === "line" || element.type === "arrow" ? "transparent" : element.fillColor,
-                  borderColor: element.strokeColor === "transparent" ? "transparent" : element.strokeColor,
-                  borderRadius: element.radius,
-                  color: element.textColor,
-                  fontSize: `${Math.max(5, element.fontSize * (360 / design.canvas.width))}px`,
-                  textAlign: element.textAlign,
-                  opacity: element.opacity / 100
-                };
-                if (element.type === "ellipse") style.borderRadius = "50%";
-                return <span className={`agent-preview-element type-${element.type}`} style={style} key={`${element.name}-${index}`}>{element.type === "text" || element.type === "sticky" ? element.text : ""}</span>;
+          </div>
+          <div className="ag-bar-track"><span style={{ width: shownPercent + "%" }} /></div>
+        </div>
+      );
+    }
+    if (design && design.mode === "update-selection") {
+      return (
+        <div className="ag-result">
+          <div className="ag-edits">
+            {design.edits.map(function (edit) {
+              return (
+                <div className="ag-edit" key={edit.targetId}>
+                  <strong>{edit.name}</strong>
+                  <div>{editFields(edit).map(function (field) { return <span key={field}>{field}</span>; })}</div>
+                </div>
+              );
+            })}
+          </div>
+          {renderResultBar(design.edits.length + (design.edits.length === 1 ? " edit" : " edits"))}
+        </div>
+      );
+    }
+    if (design) {
+      const canvas = design.canvas;
+      return (
+        <div className="ag-result">
+          <div className="ag-frame is-done">
+            <div className="ag-canvas" style={{ background: canvas.backgroundColor, aspectRatio: canvas.width + " / " + canvas.height }}>
+              {design.elements.slice(0, 160).map(function (element, index) {
+                const label = element.type === "text" || element.type === "sticky" ? element.text : "";
+                const style = previewStyle(element, canvas);
+                style.animationDelay = Math.min(index * 14, 700) + "ms";
+                return <span className={"ag-el type-" + element.type} style={style} key={element.name + "-" + index}>{label}</span>;
               })}
             </div>
-          </div>}
-          {!!design.designNotes?.length && <section className="agent-result-section"><div className="agent-section-title"><h4>Design decisions</h4></div><ul className="agent-design-notes">{design.designNotes.map((note, index) => <li key={`${note}-${index}`}>{note}</li>)}</ul></section>}
-          {!!design.componentsUsed?.length && <div className="agent-component-chips">{design.componentsUsed.map((item) => <span key={item}>{item}</span>)}</div>}
-          {!!design.componentDefinitions?.length && <p className="agent-library-note"><Layers3 size={13} /> {design.componentDefinitions.length} reusable component {design.componentDefinitions.length === 1 ? "master" : "masters"} will be added to this room's Design Studio library.</p>}
-          {!!design.qualityWarnings?.length && <p className="agent-quality-note">A few layout checks need your review: {design.qualityWarnings.join(" ")}</p>}
-          <div className="agent-apply-row">
-            <button type="button" className="agent-apply-button" onClick={applyDesign} disabled={readOnly || applied}>
-              {applied ? <><Check size={16} /> Changes applied</> : design.mode === "update-selection" ? <><Check size={16} /> Apply {design.edits.length} selected edits</> : <><Plus size={16} /> Add editable design to canvas</>}
-            </button>
-            <button type="button" className="agent-regenerate-button" onClick={() => { setDesign(null); setApplied(false); setPrompt((value) => value.trim()); }} title="Create another version"><RotateCcw size={16} /></button>
           </div>
-          <p className="agent-approval-note"><ShieldCheck size={13} /> Nothing changes until you approve this preview. {design.mode === "update-selection" ? "Only the selected objects shown above will be updated." : "The new editable objects save locally and synchronize with room collaborators."}</p>
+          {renderResultBar(design.elements.length + " objects  " + canvas.width + " x " + canvas.height)}
         </div>
-      )}
-    </aside>
+      );
+    }
+    return (
+      <div className="ag-empty">
+        <div className="ag-frame is-idle"><SkeletonBuild /></div>
+        <p>Your design appears here</p>
+      </div>
+    );
+  }
+
+  function renderResultBar(summary) {
+    return (
+      <div className="ag-resultbar">
+        <div className="ag-resultinfo">
+          <strong>{design.title}</strong>
+          <span>{summary}{design.qualityWarnings?.length ? "  Review layout" : ""}</span>
+        </div>
+        <button className="ag-icon" type="button" onClick={discardDesign} aria-label="Discard and try again" title="Discard"><RotateCcw size={16} /></button>
+        {applied
+          ? <button className="ag-apply is-done" type="button" onClick={onClose}><Check size={16} /> Added. Close</button>
+          : <button className="ag-apply" type="button" onClick={applyDesign} disabled={readOnly}><Check size={16} /> {design.mode === "update-selection" ? "Apply edits" : "Add to canvas"}</button>}
+      </div>
+    );
+  }
+
+  const canGenerate = prompt.trim().length >= 8 && !readOnly && !isNotesRoom;
+
+  const node = (
+    <div className="ag-overlay" role="dialog" aria-modal="true" aria-label="Design Agent">
+      <div className="ag-sheet">
+        <header className="ag-head">
+          <span className="ag-mark"><Sparkles size={17} /></span>
+          <h2>Design Agent</h2>
+          <span className="ag-chip">{isNotesRoom ? "Notes" : "Board"}  {context.elementCount} objects{context.selected.length ? "  " + context.selected.length + " selected" : ""}</span>
+          {!isAuthenticated && <button className="ag-signin" type="button" onClick={handleSignIn}><LogIn size={14} /> Sign in</button>}
+          <button className="ag-close" type="button" onClick={onClose} aria-label="Close Design Agent"><X size={18} /></button>
+        </header>
+
+        <div className="ag-split">
+          <section className="ag-stage" aria-label="Preview">{renderStage()}</section>
+
+          <section className="ag-prompt" aria-label="Prompt">
+            <label className="ag-label" htmlFor="ag-prompt-input">Describe your design</label>
+            <div className="ag-composer">
+              <textarea
+                id="ag-prompt-input"
+                ref={textareaRef}
+                value={prompt}
+                onChange={onPrompt}
+                onKeyDown={onPromptKey}
+                maxLength={2000}
+                disabled={busy}
+                placeholder={context.selected.length ? "Describe a new design or how to change the selection" : "A dark analytics dashboard with bold type and green accents"}
+              />
+              <div className="ag-composer-foot">
+                <span>{prompt.length} / 2000</span>
+                {busy
+                  ? <button className="ag-go is-cancel" type="button" onClick={cancelGeneration}><X size={15} /> Cancel</button>
+                  : <button className="ag-go" type="button" onClick={runDesign} disabled={!canGenerate}><Wand2 size={15} /> Generate <ArrowUp size={14} /></button>}
+              </div>
+            </div>
+
+            {busy && (
+              <ol className="ag-steps" aria-label="Progress">
+                {STAGES.map(function (stage, index) {
+                  const done = progress.stage === "ready" || index < activeStageIndex;
+                  const active = index === activeStageIndex;
+                  return (
+                    <li key={stage.id} className={(done ? "is-done " : "") + (active ? "is-active" : "")}>
+                      <i>{done ? <Check size={11} /> : active ? <LoaderCircle size={11} className="ag-rot" /> : null}</i>
+                      <span>{stage.label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+
+            {!busy && !design && (
+              <div className="ag-ideas">
+                <span className="ag-label">Quick start</span>
+                <div>
+                  {IDEAS.map(function (idea) {
+                    const Icon = idea.icon;
+                    return <button type="button" key={idea.id} onClick={pickIdea(idea)}><Icon size={15} /> {idea.label}</button>;
+                  })}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="ag-error" role="alert">
+                <strong>Couldn't finish</strong>
+                <span>{error}</span>
+                {errorCode === "AGENT_NOT_CONFIGURED" && <small>Add AI_API_KEY to the backend and redeploy.</small>}
+              </div>
+            )}
+            {isNotesRoom && !error && <p className="ag-hint">Switch to a Board room to generate designs.</p>}
+            {!isAuthenticated && !error && <p className="ag-hint">Sign in to generate. Your room stays on this device.</p>}
+          </section>
+        </div>
+      </div>
+    </div>
   );
+
+  return createPortal(node, document.body);
 }

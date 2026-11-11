@@ -5,7 +5,7 @@ import {
   ArrowLeft, Check, ChevronDown, Download, FileJson, FileText, GitCommit, History,
   Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, Wifi, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft,
   Moon, Sun, Pencil, Presentation, MousePointer2, Hand, Square, Diamond, Circle, MoveUpRight, Minus, PenLine, Type, ImagePlus, Eraser, Layers,
-  SquareKanban, WandSparkles, Palette, Frame, Brush, MessageCircle, Grid3x3, Trash2, GitPullRequest, GitMerge, SlidersHorizontal, Zap
+  SquareKanban, WandSparkles, Palette, Frame, Brush, MessageCircle, Grid3x3, Trash2, GitPullRequest, GitMerge, SlidersHorizontal, Zap, LogIn
 } from "lucide-react";
 import Drawer from "../../components/Drawer.jsx";
 import Menu from "../../components/Menu.jsx";
@@ -1355,6 +1355,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         : <span className="room-mode-chip" title="Set by the room owner">{collab.workMode === "commit" ? <GitPullRequest size={13} /> : <Zap size={13} />}{collab.workMode === "commit" ? "Commit mode" : "Live mode"}</span>)}
       {avatarsNode}
       {readOnly && <span className="room-viewonly">View only</span>}
+      {!isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> Sign in</button>}
       {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> Share</button>}
       <Menu renderTrigger={renderMoreTrigger} items={menuItems} width={244} label="Room menu" />
     </div>

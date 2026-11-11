@@ -165,3 +165,9 @@ html[data-theme="dark"] .project-confirm-dialog button:last-child { color: #0a0a
   .room-tool { width: 40px; height: 40px; border-radius: 15px; }
   .room-dock-btn { width: 42px; height: 42px; }
 }
+
+/* Guest sign in tabs */
+.room-signin-tab { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #18181b; border-radius: 3px; background: #18181b; color: #fafafa; font-size: 13px; font-weight: 800; cursor: pointer; transition: transform .16s, box-shadow .16s; }
+.room-signin-tab:hover { transform: translateY(-1px); box-shadow: 0 8px 16px -8px rgba(24, 24, 27, .6); }
+html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #fafafa; color: #09090b; }
+.wk-signin-tab { height: 40px; border-radius: 3px; font-weight: 800; }

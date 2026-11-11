@@ -443,6 +443,7 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
               {query && <button type="button" onClick={clearQuery} aria-label="Clear search"><X size={13} /></button>}
             </label>
             {selectedFolder && <button className="secondary-button" type="button" onClick={handleManageFolder}><Settings2 size={15} /> Manage</button>}
+            {!user && <button className="primary-button wk-signin-tab" type="button" onClick={onSignIn}><LogIn size={15} /> Sign in</button>}
           </div>
         </header>
 
