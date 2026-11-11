@@ -40,7 +40,7 @@
 .drawer .history-empty span { max-width: 260px; }
 
 /* ---------- Rounded system: everything that was still sharp ---------- */
-.auth-shell, .auth-story-panel, .auth-form-panel { border-radius: 0; }
+.auth-shell, .auth-story-panel, .auth-form-panel { border-radius: var(--r-xl); }
 .auth-card-wrap input, .auth-card-wrap select, .auth-card-wrap textarea, .auth-field input { border-radius: var(--r); }
 .auth-card-wrap button, .auth-submit, .auth-provider-button, .auth-social-button { border-radius: var(--r); }
 .auth-divider span, .auth-bottom-divider span, .auth-alert-error, .auth-alert-success { border-radius: 12px; }
@@ -51,15 +51,16 @@
 .notes-markdown-preview code { border-radius: 8px; }
 .notes-markdown-preview pre { border-radius: 16px; }
 .nt textarea, .nt-input, .nt-title { border-radius: 12px; }
-.wk-side { border-radius: 0; }
-.wk-thumb { border-radius: 0; }
+.wk-side { border-radius: 0 var(--r-xl) var(--r-xl) 0; }
+.wk-thumb { border-radius: var(--r-lg) var(--r-lg) 0 0; }
 .wk-sheet b, .wk-sheet s, .wk-foot i { border-radius: 4px; }
 .wk-badge > span { border-radius: 50%; }
 .wk-card { border-radius: var(--r-xl); }
 .wk-banner, .wk-empty { border-radius: var(--r-xl); }
 .wk-search, .wk-new, .wk-user { border-radius: 16px; }
 .wk-nav { border-radius: 12px; }
-.room-project-panel, .room-agent-panel, .room-design-panel, .project-panel-toolbar { border-radius: 0; }
+.room-project-panel, .room-agent-panel, .room-design-panel { border-radius: var(--r-xl) 0 0 var(--r-xl); }
+.project-panel-toolbar { border-radius: var(--r-lg); }
 .project-panel-toolbar button, .project-cancel-button, .project-save-button { border-radius: 12px; }
 .collab-error-banner { border-radius: 14px; }
 .hp-m-menu i, .hp-art-notes i:first-child { border-radius: 4px; }
@@ -103,6 +104,7 @@ html[data-theme="dark"] .project-confirm-dialog button:last-child { color: #0a0a
 .room-title { top: 16px; left: 16px; height: 50px; max-width: min(340px, 30vw); border-color: var(--line-strong); border-radius: 22px; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(14px); box-shadow: var(--float-shadow); }
 .room-title.is-notes { left: 16px; }
 .room-title .room-btn { width: 48px; height: 48px; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.room-title .room-btn:first-child { border-radius: 22px 0 0 22px; }
 .room-title .room-btn:hover { background: var(--bg-muted); }
 .room-title-button { padding: 0 18px 0 16px; }
 .room-title-button strong { font-family: var(--font-display); font-size: 15.5px; font-weight: 650; letter-spacing: -0.02em; }
@@ -167,7 +169,23 @@ html[data-theme="dark"] .project-confirm-dialog button:last-child { color: #0a0a
 }
 
 /* Guest sign in tabs */
-.room-signin-tab { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #18181b; border-radius: 3px; background: #18181b; color: #fafafa; font-size: 13px; font-weight: 800; cursor: pointer; transition: transform .16s, box-shadow .16s; }
+.room-signin-tab { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid #18181b; border-radius: 12px; background: #18181b; color: #fafafa; font-size: 13px; font-weight: 800; cursor: pointer; transition: transform .16s, box-shadow .16s; }
 .room-signin-tab:hover { transform: translateY(-1px); box-shadow: 0 8px 16px -8px rgba(24, 24, 27, .6); }
 html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #fafafa; color: #09090b; }
-.wk-signin-tab { height: 40px; border-radius: 3px; font-weight: 800; }
+.wk-signin-tab { height: 40px; border-radius: 14px; font-weight: 800; }
+
+
+/* ---------- Rounded safety net: nothing in the app is a sharp rectangle ---------- */
+.review-item { border-radius: 16px; }
+.review-status, .review-chips span, .room-mode-chip, .project-status-in-progress, .project-status-done { border-radius: 99px; }
+.review-preview figure { border-radius: 14px; overflow: hidden; }
+.review-decline textarea { border-radius: 12px; }
+.discussion-replying { border-radius: 12px; }
+.wk-sheet i, .nt-format span { border-radius: 99px; }
+.room-discussion-panel { border-radius: var(--r-xl) 0 0 var(--r-xl); overflow: hidden; }
+.collab-avatar-stack .collab-avatar-more, .room-avatars .room-avatar-more { border-radius: 50%; }
+.arc-toast-count { border-radius: 99px; }
+.menu-separator, .drawer-foot { border-radius: 0; }
+@media (max-width: 700px) {
+  .room-project-panel, .room-agent-panel, .room-design-panel, .room-discussion-panel { border-radius: 0; }
+}

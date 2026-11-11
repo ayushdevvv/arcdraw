@@ -51,11 +51,21 @@ export const register = asyncHandler(async (req, res) => {
 
 export const verifyEmailOtp = asyncHandler(async (req, res) => {
   const input = verifyEmailOtpSchema.parse(req.body);
-  const user = await authService.verifyEmailOtp(input);
+  const { user, session } = await authService.verifyEmailOtp(input, sessionMetadata(req));
+  if (session) {
+    setAuthCookies(res, session);
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      user,
+      signedIn: true
+    });
+  }
   return res.status(200).json({
     success: true,
-    message: "Email verified successfully. You can now sign in.",
-    user
+    message: "Email already verified. You can sign in.",
+    user,
+    signedIn: false
   });
 });
 

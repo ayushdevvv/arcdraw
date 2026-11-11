@@ -67,6 +67,13 @@ export function AuthProvider({ children }) {
     return result;
   }, []);
 
+  // Used after email verification, where the server has already set the session cookies.
+  const completeSignIn = useCallback((nextUser) => {
+    setUser(nextUser || null);
+    setStatus(nextUser ? "authenticated" : "anonymous");
+    setAuthError("");
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await logoutRequest();
@@ -85,9 +92,10 @@ export function AuthProvider({ children }) {
     isLoading: status === "loading",
     authError,
     signIn,
+    completeSignIn,
     signOut,
     setAuthError
-  }), [user, status, authError, signIn, signOut]);
+  }), [user, status, authError, signIn, completeSignIn, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

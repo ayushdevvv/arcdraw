@@ -142,7 +142,7 @@
 /* Rounded chrome */
 .room-title, .room-btn, .room-share, .room-viewonly, .room-sync, .room-status, .room-banner { border-radius: 14px; }
 .room-title { overflow: hidden; }
-.room-title .room-btn { border-radius: 0; }
+.room-title .room-btn { border-radius: 0; }  /* outer corners rounded in polish.css */
 .room-dock { border-radius: 20px; padding: 6px; gap: 4px; }
 .room-dock-btn { border-radius: 14px; }
 .room-dock-btn b { border-radius: 99px; outline-width: 2px; }

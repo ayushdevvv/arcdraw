@@ -121,14 +121,15 @@ export async function registerWithPassword({ name, email, password }) {
   }
 }
 
-export async function verifyEmailOtp({ email, otp }) {
+export async function verifyEmailOtp({ email, otp }, metadata) {
   const normalizedEmail = email.toLowerCase();
   const user = await User.findOne({ email: normalizedEmail }).select(
     "+emailVerificationOtpHash +emailVerificationOtpExpiresAt +emailVerificationOtpAttempts"
   );
 
   if (!user) throw new ApiError(400, "The verification code is invalid or expired", "OTP_INVALID_OR_EXPIRED");
-  if (user.isEmailVerified) return toPublicUser(user);
+  // Already verified: the code was not checked in this call, so never mint a session here.
+  if (user.isEmailVerified) return { user: toPublicUser(user), session: null };
 
   const valid = assertOtpCanBeUsed(user, {
     hashField: "emailVerificationOtpHash",
@@ -151,8 +152,11 @@ export async function verifyEmailOtp({ email, otp }) {
   user.emailVerificationOtpExpiresAt = undefined;
   user.emailVerificationOtpSentAt = undefined;
   user.emailVerificationOtpAttempts = 0;
+  user.lastLoginAt = new Date();
   await user.save();
-  return toPublicUser(user);
+  // The one-time code was just proven valid, so the person can go straight in without a second login.
+  const session = await createSession(user, metadata);
+  return { user: session.user, session };
 }
 
 export async function resendVerification(email) {

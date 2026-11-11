@@ -47,7 +47,7 @@ function friendlyError(error) {
 }
 
 export default function AuthPage({ route, navigate, onGuest, redirectTo = null, allowGuest = true }) {
-  const { signIn, isAuthenticated, isLoading } = useAuth();
+  const { signIn, completeSignIn, isAuthenticated, isLoading } = useAuth();
   const [view, setView] = useState(function () { return initialView(route); });
   const [providers, setProviders] = useState({ google: false, github: false });
   const [name, setName] = useState("");
@@ -197,12 +197,17 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     setNotice("");
     setBusy(true);
     try {
-      await verifyEmailOtp({ email: pendingEmail, otp });
+      const result = await verifyEmailOtp({ email: pendingEmail, otp });
       sessionStorage.removeItem(PENDING_EMAIL_KEY);
       sessionStorage.removeItem(RESEND_AT_KEY);
       setDevelopmentOtp("");
       setPassword("");
       setOtp("");
+      if (result.signedIn && result.user) {
+        // Verified and signed in by the server: the redirect effect above sends them to the dashboard.
+        completeSignIn(result.user);
+        return;
+      }
       go("login");
       setNotice("Email verified. You can sign in now.");
     } catch (cause) {

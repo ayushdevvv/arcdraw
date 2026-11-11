@@ -1,14 +1,35 @@
 /* Home: SaaS product style. Same theme tokens as the rest of the app. */
 .hp { min-height: 100vh; overflow-x: clip; background: var(--bg); }
 
-/* Full width nav, edge to edge */
-.hp-nav { position: sticky; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(16px) saturate(1.4); }
-.hp-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; height: 68px; padding: 0 clamp(16px, 3vw, 40px); }
-.hp-nav-links { display: flex; align-items: center; gap: 4px; margin-right: auto; margin-left: 28px; }
+/* Full width nav, edge to edge. On scroll it morphs into a floating pill (same content, animated only). */
+.hp-nav { --nav-ease: cubic-bezier(.32, .72, 0, 1); --nav-dur: .62s; position: sticky; top: 0; z-index: 50; width: 100%; height: 68px; pointer-events: none; animation: hp-nav-drop .7s var(--nav-ease) both; }
+.hp-nav-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  width: 100%; max-width: 100%; height: 68px; margin: 0 auto; padding: 0 clamp(16px, 3vw, 40px);
+  border: 1px solid transparent; border-bottom-color: var(--line); border-radius: 0;
+  background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0); pointer-events: auto; will-change: max-width, height, margin-top;
+  transition:
+    max-width var(--nav-dur) var(--nav-ease), height var(--nav-dur) var(--nav-ease), margin-top var(--nav-dur) var(--nav-ease),
+    padding var(--nav-dur) var(--nav-ease), border-radius var(--nav-dur) var(--nav-ease), gap var(--nav-dur) var(--nav-ease),
+    border-color .4s ease, background-color .4s ease, box-shadow var(--nav-dur) var(--nav-ease);
+}
+.hp-nav.is-scrolled .hp-nav-inner {
+  max-width: 940px; height: 56px; margin-top: 10px; padding: 0 10px 0 18px; gap: 16px;
+  border-color: var(--line-strong); border-radius: 30px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  box-shadow: var(--float-shadow);
+}
+.hp-nav.is-scrolled .hp-nav-links { margin-left: 12px; }
+.hp-nav.is-scrolled .hp-nav-cta, .hp-nav.is-scrolled .hp-signin { height: 38px; }
+@keyframes hp-nav-drop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) { .hp-nav.is-scrolled .hp-nav-inner { max-width: calc(100% - 20px); } }
+@media (prefers-reduced-motion: reduce) { .hp-nav { animation: none; } .hp-nav-inner { transition: none; } }
+.hp-nav-links { display: flex; align-items: center; gap: 4px; margin-right: auto; margin-left: 28px; transition: margin var(--nav-dur, .6s) cubic-bezier(.32, .72, 0, 1); }
 .hp-nav-links button { height: 38px; padding: 0 14px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
 .hp-nav-links button:hover { background: var(--bg-muted); color: var(--text); }
 .hp-nav-right { display: flex; align-items: center; gap: 6px; }
-.hp-nav-cta { height: 40px; padding: 0 18px; }
+.hp-nav-cta { height: 40px; padding: 0 18px; transition: height .5s cubic-bezier(.32, .72, 0, 1), background-color .14s ease, border-color .14s ease, color .14s ease, transform .1s ease; }
 .hp-signin { height: 40px; }
 
 /* Hero */

@@ -153,10 +153,10 @@
 .review-decline textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); padding: 8px 10px; font: inherit; font-size: 13px; resize: vertical; }
 .room-draftbar {
   position: fixed; z-index: 60; top: 62px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
-  max-width: min(94vw, 720px); padding: 8px 12px; border: 1px solid #f59e0b; border-left-width: 4px; border-radius: 0; background: #111111; color: #f5f5f5; font-size: 13px; font-weight: 600;
+  max-width: min(94vw, 720px); padding: 8px 12px; border: 1px solid #f59e0b; border-left-width: 4px; border-radius: 14px; background: #111111; color: #f5f5f5; font-size: 13px; font-weight: 600;
   box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .6);
 }
-.room-draftbar button { height: 28px; padding: 0 12px; border: 1px solid #f5f5f5; border-radius: 0; background: #f5f5f5; color: #0a0a0a; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.room-draftbar button { height: 28px; padding: 0 12px; border: 1px solid #f5f5f5; border-radius: 10px; background: #f5f5f5; color: #0a0a0a; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .room-draftbar button.is-ghost { background: transparent; color: #f5f5f5; border-color: #555; }
 .room-draftbar button:disabled { opacity: .45; cursor: not-allowed; }
 .room-mode-chip { height: 27px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: inherit; font-size: 11.5px; font-weight: 700; cursor: default; }

@@ -6,31 +6,31 @@
 
 .ax-top { display: flex; align-items: center; justify-content: space-between; padding: 18px clamp(16px, 3vw, 32px); }
 .ax-top-right { display: flex; align-items: center; gap: 10px; }
-.ax-home { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid transparent; background: transparent; color: #52525b; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 0; }
+.ax-home { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid transparent; background: transparent; color: #52525b; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 12px; }
 .ax-home:hover { color: #18181b; border-color: #d4d4d8; background: #fff; }
 
 .ax-center { flex: 1; display: grid; place-items: center; padding: 8px 16px 48px; }
-.ax-card { width: min(100%, 420px); padding: 32px 30px 26px; background: #ffffff; border: 1px solid #d4d4d8; border-radius: 4px; box-shadow: 0 1px 0 #fff inset, 0 2px 4px rgba(24, 24, 27, .04), 0 24px 60px -12px rgba(24, 24, 27, .22), 0 0 0 6px rgba(24, 24, 27, .035); animation: ax-pop .46s cubic-bezier(.2, 1.1, .3, 1) both; }
+.ax-card { width: min(100%, 420px); padding: 32px 30px 26px; background: #ffffff; border: 1px solid #d4d4d8; border-radius: 26px; box-shadow: 0 1px 0 #fff inset, 0 2px 4px rgba(24, 24, 27, .04), 0 24px 60px -12px rgba(24, 24, 27, .22), 0 0 0 6px rgba(24, 24, 27, .035); animation: ax-pop .46s cubic-bezier(.2, 1.1, .3, 1) both; }
 @keyframes ax-pop { from { opacity: 0; transform: translateY(18px) scale(.965); } to { opacity: 1; transform: none; } }
 
 .ax-head { text-align: center; margin-bottom: 22px; }
-.ax-badge { display: inline-grid; place-items: center; width: 52px; height: 52px; margin-bottom: 16px; border: 1px solid #e4e4e7; background: #fafafa; color: #18181b; border-radius: 4px; box-shadow: 0 6px 16px -6px rgba(24, 24, 27, .3); }
+.ax-badge { display: inline-grid; place-items: center; width: 52px; height: 52px; margin-bottom: 16px; border: 1px solid #e4e4e7; background: #fafafa; color: #18181b; border-radius: 16px; box-shadow: 0 6px 16px -6px rgba(24, 24, 27, .3); }
 .ax-badge .arc-mark { width: 26px; height: 26px; }
 .ax-head h1 { margin: 0; font-size: 24px; line-height: 1.15; font-weight: 800; letter-spacing: -.035em; }
 .ax-head p { margin: 8px 0 0; color: #71717a; font-size: 14px; font-weight: 500; }
 
-.ax-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; margin-bottom: 16px; background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 3px; }
-.ax-tabs button { height: 36px; border: 0; border-radius: 2px; background: transparent; color: #71717a; font-size: 13px; font-weight: 800; cursor: pointer; transition: background .18s, color .18s, box-shadow .18s; }
+.ax-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; margin-bottom: 16px; background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 14px; }
+.ax-tabs button { height: 36px; border: 0; border-radius: 10px; background: transparent; color: #71717a; font-size: 13px; font-weight: 800; cursor: pointer; transition: background .18s, color .18s, box-shadow .18s; }
 .ax-tabs button:hover { color: #18181b; }
 .ax-tabs button.is-active { background: #fff; color: #18181b; box-shadow: 0 1px 3px rgba(24, 24, 27, .16), 0 0 0 1px #e4e4e7; }
 
-.ax-alert { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid; border-radius: 3px; font-size: 13px; font-weight: 600; line-height: 1.45; animation: ax-pop .3s ease both; }
+.ax-alert { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid; border-radius: 12px; font-size: 13px; font-weight: 600; line-height: 1.45; animation: ax-pop .3s ease both; }
 .ax-alert.is-error { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .ax-alert.is-ok { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
 .ax-alert svg { flex: none; margin-top: 2px; }
 
 .ax-social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ax-social button { height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #d4d4d8; border-radius: 3px; background: #fff; color: #18181b; font-size: 14px; font-weight: 800; cursor: pointer; transition: transform .16s, border-color .16s, box-shadow .16s, background .16s; }
+.ax-social button { height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #d4d4d8; border-radius: 14px; background: #fff; color: #18181b; font-size: 14px; font-weight: 800; cursor: pointer; transition: transform .16s, border-color .16s, box-shadow .16s, background .16s; }
 .ax-social button:hover { transform: translateY(-2px); border-color: #18181b; background: #fafafa; box-shadow: 0 8px 18px -8px rgba(24, 24, 27, .35); }
 .ax-social button:active { transform: translateY(0); }
 .ax-or { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: #a1a1aa; font-size: 12px; font-weight: 700; }
@@ -39,7 +39,7 @@
 .ax-form { display: grid; gap: 14px; }
 .ax-field { display: grid; gap: 6px; }
 .ax-field > span { color: #3f3f46; font-size: 12.5px; font-weight: 800; }
-.ax-input { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 3px; background: #fff; color: #71717a; transition: border-color .16s, box-shadow .16s; }
+.ax-input { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 14px; background: #fff; color: #71717a; transition: border-color .16s, box-shadow .16s; }
 .ax-input:focus-within { border-color: #18181b; color: #18181b; box-shadow: 0 0 0 4px rgba(24, 24, 27, .09); }
 .ax-input input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: #18181b; font: 600 14px inherit; font-family: inherit; }
 .ax-input input::placeholder { color: #a1a1aa; font-weight: 500; }
@@ -49,19 +49,19 @@
 .ax-link { padding: 0; border: 0; background: transparent; color: #18181b; font-size: 13px; font-weight: 800; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .ax-link:disabled { color: #a1a1aa; cursor: not-allowed; text-decoration: none; }
 
-.ax-submit { height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #18181b; border-radius: 3px; background: #18181b; color: #fafafa; font-size: 14px; font-weight: 800; cursor: pointer; transition: transform .16s, box-shadow .16s, background .16s, opacity .16s; }
+.ax-submit { height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #18181b; border-radius: 14px; background: #18181b; color: #fafafa; font-size: 14px; font-weight: 800; cursor: pointer; transition: transform .16s, box-shadow .16s, background .16s, opacity .16s; }
 .ax-submit:hover:not(:disabled) { transform: translateY(-2px); background: #27272a; box-shadow: 0 12px 22px -10px rgba(24, 24, 27, .6); }
 .ax-submit:active:not(:disabled) { transform: translateY(0); }
 .ax-submit:disabled { opacity: .45; cursor: not-allowed; }
-.ax-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border: 1px solid #e4e4e7; border-radius: 3px; background: transparent; color: #52525b; font-size: 13px; font-weight: 800; cursor: pointer; }
+.ax-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border: 1px solid #e4e4e7; border-radius: 12px; background: transparent; color: #52525b; font-size: 13px; font-weight: 800; cursor: pointer; }
 .ax-ghost:hover { border-color: #18181b; color: #18181b; }
 .ax-spin { animation: ax-rot .8s linear infinite; }
 @keyframes ax-rot { to { transform: rotate(360deg); } }
 
-.ax-sent { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px dashed #d4d4d8; border-radius: 3px; background: #fafafa; font-size: 13px; font-weight: 700; color: #3f3f46; }
+.ax-sent { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px dashed #d4d4d8; border-radius: 12px; background: #fafafa; font-size: 13px; font-weight: 700; color: #3f3f46; }
 .ax-sent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ax-resend { display: flex; align-items: center; justify-content: center; gap: 8px; color: #71717a; font-size: 13px; font-weight: 600; }
-.ax-devotp { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 3px; font-size: 12px; font-weight: 700; }
+.ax-devotp { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 12px; font-size: 12px; font-weight: 700; }
 .ax-devotp strong { font: 800 15px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .2em; }
 .ax-guest { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 18px; padding: 14px 0 0; border: 0; border-top: 1px solid #e4e4e7; background: transparent; color: #52525b; font-size: 13px; font-weight: 800; cursor: pointer; }
 .ax-guest:hover { color: #18181b; }
@@ -69,7 +69,7 @@
 
 /* OTP blocks */
 .otp-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 7px; }
-.otp-box { width: 100%; height: 52px; padding: 0; border: 1px solid #d4d4d8; border-radius: 3px; background: #fff; color: #18181b; text-align: center; font: 800 20px ui-monospace, SFMono-Regular, Menlo, monospace; outline: 0; transition: border-color .15s, box-shadow .15s, transform .15s, background .15s; caret-color: #18181b; }
+.otp-box { width: 100%; height: 52px; padding: 0; border: 1px solid #d4d4d8; border-radius: 14px; background: #fff; color: #18181b; text-align: center; font: 800 20px ui-monospace, SFMono-Regular, Menlo, monospace; outline: 0; transition: border-color .15s, box-shadow .15s, transform .15s, background .15s; caret-color: #18181b; }
 .otp-box:focus { border-color: #18181b; box-shadow: 0 0 0 4px rgba(24, 24, 27, .09); transform: translateY(-2px); }
 .otp-box.is-filled { border-color: #18181b; background: #fafafa; animation: ax-tick .18s ease; }
 @keyframes ax-tick { 0% { transform: scale(.9); } 100% { transform: scale(1); } }

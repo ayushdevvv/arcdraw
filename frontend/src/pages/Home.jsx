@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight, ArrowUpRight, Eraser, Frame, Hand, Link2, ListChecks, MousePointer2, NotebookText, Presentation,
   Share2, Shapes, Sparkles, SquareKanban, Square, Circle, MoveUpRight, Type, Users, WandSparkles, Flag, Search,
@@ -111,6 +111,24 @@ function scrollToId(id) {
 
 export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
   const [feature, setFeature] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Nav morphs into a floating pill after a small scroll. Two thresholds stop it flickering at the edge.
+  useEffect(function () {
+    let frame = 0;
+    function update() {
+      frame = 0;
+      const y = window.scrollY;
+      setScrolled(function (current) { return current ? y > 8 : y > 28; });
+    }
+    function onScroll() { if (!frame) frame = window.requestAnimationFrame(update); }
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return function () {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   function openBoards() { onContinue("boards"); }
   function openNotes() { onContinue("notes"); }
@@ -126,7 +144,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
 
   return (
     <main className="hp">
-      <header className="hp-nav">
+      <header className={"hp-nav" + (scrolled ? " is-scrolled" : "")}>
         <div className="hp-nav-inner">
           <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
           <nav className="hp-nav-links" aria-label="Sections">
