@@ -215,3 +215,12 @@ html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #f
   .room-topright .room-share, .room-topright .room-signin-tab { padding: 0; width: 40px; height: 40px; justify-content: center; border-radius: 14px; }
   .room-topright-phone .room-topright { gap: 6px; }
 }
+
+/* Phone: show every drawing tool, wrapped on two rows, never hidden off screen */
+@media (max-width: 700px) {
+  .room-tools { overflow: visible; flex-wrap: wrap; justify-content: center; left: 10px; right: 10px; bottom: 10px; gap: 4px 2px; border-radius: 26px; }
+  .room-tools-sep { display: none; }
+  .room-tool { width: 40px; height: 40px; }
+  .room-dock { bottom: 112px; }
+}
+.ag-signin-inline { margin: 6px 0 0 !important; width: max-content; }

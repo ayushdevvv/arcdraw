@@ -348,6 +348,7 @@ export default function RoomAgentPanel({
               <div className="ag-error" role="alert">
                 <strong>Couldn't finish</strong>
                 <span>{error}</span>
+                {errorCode === "AUTH_REQUIRED" || /sign in again/i.test(error) ? <button className="ag-signin ag-signin-inline" type="button" onClick={handleSignIn}><LogIn size={14} /> Sign in</button> : null}
                 {errorCode === "AGENT_NOT_CONFIGURED" && <small>Add AI_API_KEY to the backend and redeploy.</small>}
               </div>
             )}

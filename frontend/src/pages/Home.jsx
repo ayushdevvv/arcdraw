@@ -114,16 +114,30 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
   const [feature, setFeature] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [slider, setSlider] = useState({ left: 0, width: 0, show: false });
   const linksRef = useRef(null);
 
   // Nav morphs into a floating pill after a small scroll. Two thresholds stop it flickering at the edge.
   useEffect(function () {
     let frame = 0;
+    let lastY = window.scrollY;
+    let lastToggleY = window.scrollY;
     function update() {
       frame = 0;
       const y = window.scrollY;
-      setScrolled(function (current) { return current ? y > 8 : y > 28; });
+      const wide = window.innerWidth > 980;
+      setScrolled(function (current) { return wide && (current ? y > 8 : y > 28); });
+      // Collapse into a single icon after a real scroll down, bring it back when scrolling up.
+      setCollapsed(function (current) {
+        if (!wide || y < 120) return false;
+        const goingDown = y > lastY;
+        lastY = y;
+        if (goingDown && y - lastToggleY > 24) { lastToggleY = y; return true; }
+        if (!goingDown && lastToggleY - y > 24) { lastToggleY = y; return false; }
+        return current;
+      });
     }
     function onScroll() { if (!frame) frame = window.requestAnimationFrame(update); }
     update();
@@ -139,6 +153,8 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
     setSlider({ left: target.offsetLeft, width: target.offsetWidth, show: true });
   }
   function hideSlider() { setSlider(function (current) { return { ...current, show: false }; }); }
+  function enterNav() { setHovered(true); }
+  function leaveNav() { setHovered(false); }
   function toggleMenu() { setMenuOpen(function (open) { return !open; }); }
   function closeMenu() { setMenuOpen(false); }
   function menuGo(action) { return function () { setMenuOpen(false); action(); }; }
@@ -157,7 +173,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
 
   return (
     <main className="hp">
-      <header className={"hp-nav" + (scrolled ? " is-scrolled" : "")}>
+      <header className={"hp-nav" + (scrolled ? " is-scrolled" : "") + (collapsed && !hovered ? " is-collapsed" : "")} onMouseEnter={enterNav} onMouseLeave={leaveNav} onFocus={enterNav}>
         <div className="hp-nav-inner">
           <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
           <nav className="hp-nav-links" aria-label="Sections" ref={linksRef} onMouseLeave={hideSlider}>

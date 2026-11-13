@@ -13,17 +13,25 @@ export async function generateRoomDesign(prompt, roomContext, { onProgress, sign
   const abortFromCaller = () => controller.abort();
   signal?.addEventListener("abort", abortFromCaller, { once: true });
   try {
-    const response = await fetch(`${API_BASE_URL}/agent/design`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-      body: JSON.stringify({ prompt, roomContext }),
-      signal: controller.signal
-    });
+    function postDesign() {
+      return fetch(`${API_BASE_URL}/agent/design`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ prompt, roomContext }),
+        signal: controller.signal
+      });
+    }
+    let response = await postDesign();
+    if (response.status === 401) {
+      // The short lived access token may have expired. Refresh once and retry before giving up.
+      const refreshed = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include", signal: controller.signal }).catch(() => null);
+      if (refreshed?.ok) response = await postDesign();
+    }
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw createStreamError(payload.error?.message || "The Design Agent request failed.", {
+      throw createStreamError(response.status === 401 ? "Your session expired. Please sign in again." : (payload.error?.message || "The Design Agent request failed."), {
         status: response.status,
         code: payload.error?.code || "AGENT_REQUEST_FAILED"
       });
