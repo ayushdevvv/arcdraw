@@ -220,12 +220,14 @@ html[data-theme="dark"] .hp-final { border: 1px solid var(--line-strong); }
 .hp-menu-cta { background: var(--ink) !important; color: var(--bg) !important; text-align: center !important; }
 @media (min-width: 561px) { .hp-menu-cta { display: none; } }
 
-/* Desktop: after scrolling down the whole bar shrinks into one small icon, and opens again on hover or when scrolling up */
-.hp-nav-links, .hp-nav-right, .hp-nav .brand-lockup span { max-width: 640px; transition: max-width var(--nav-dur) var(--nav-ease), opacity .35s ease .12s, margin var(--nav-dur) var(--nav-ease); }
+/* Every device: after scrolling down the whole bar shrinks into one small pill with the A mark and a menu button. Scroll up and it opens again. */
+.hp-nav-links, .hp-nav .brand-lockup span { max-width: 640px; transition: max-width var(--nav-dur) var(--nav-ease), opacity .35s ease .12s, margin var(--nav-dur) var(--nav-ease); }
 .hp-nav .brand-lockup { overflow: hidden; }
-@media (min-width: 981px) {
-  .hp-nav.is-collapsed .hp-nav-inner { max-width: 56px; height: 56px; padding: 0; gap: 0; justify-content: center; border-radius: 999px; cursor: pointer; }
-  .hp-nav.is-collapsed .hp-nav-links, .hp-nav.is-collapsed .hp-nav-right, .hp-nav.is-collapsed .brand-lockup span { max-width: 0; opacity: 0; margin: 0; overflow: hidden; pointer-events: none; transition-delay: 0s, 0s, 0s; }
-  .hp-nav.is-collapsed .brand-lockup { gap: 0; }
-}
-@media (max-width: 980px) { .hp-nav .roll-host .rl > span { animation: none; } }
+.hp-nav-right > * { transition: width var(--nav-dur) var(--nav-ease), min-width var(--nav-dur) var(--nav-ease), padding var(--nav-dur) var(--nav-ease), opacity .3s ease, border-width .3s ease; }
+.hp-nav.is-collapsed .hp-nav-inner { max-width: 108px; height: 56px; margin-top: 10px; padding: 0 8px 0 12px; gap: 8px; justify-content: center; border-radius: 999px; border-color: var(--line-strong); box-shadow: var(--float-shadow); }
+.hp-nav.is-collapsed .hp-nav-links, .hp-nav.is-collapsed .brand-lockup span { max-width: 0; opacity: 0; margin: 0; overflow: hidden; pointer-events: none; transition-delay: 0s; }
+.hp-nav.is-collapsed .hp-nav-right { gap: 0; }
+.hp-nav.is-collapsed .hp-nav-right > *:not(.hp-burger) { width: 0 !important; min-width: 0 !important; padding: 0 !important; border-width: 0 !important; opacity: 0; overflow: hidden; pointer-events: none; }
+.hp-nav.is-collapsed .hp-burger { display: grid; }
+.hp-nav.is-collapsed .brand-lockup { gap: 0; }
+@media (min-width: 981px) { .hp-menu { left: 50%; right: auto; width: 280px; margin-left: -140px; } }

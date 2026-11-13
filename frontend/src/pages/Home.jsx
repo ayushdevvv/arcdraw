@@ -127,7 +127,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
     function update() {
       frame = 0;
       const y = window.scrollY;
-      const wide = window.innerWidth > 980;
+      const wide = true;
       setScrolled(function (current) { return wide && (current ? y > 8 : y > 28); });
       // Collapse into a single icon after a real scroll down, bring it back when scrolling up.
       setCollapsed(function (current) {
@@ -173,7 +173,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
 
   return (
     <main className="hp">
-      <header className={"hp-nav" + (scrolled ? " is-scrolled" : "") + (collapsed && !hovered ? " is-collapsed" : "")} onMouseEnter={enterNav} onMouseLeave={leaveNav} onFocus={enterNav}>
+      <header className={"hp-nav" + (scrolled ? " is-scrolled" : "") + (collapsed ? " is-collapsed" : "")}>
         <div className="hp-nav-inner">
           <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
           <nav className="hp-nav-links" aria-label="Sections" ref={linksRef} onMouseLeave={hideSlider}>

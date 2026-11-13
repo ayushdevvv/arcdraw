@@ -1797,7 +1797,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     </div>
   );
 
-  function renderExcalidrawTopRight() { return topRightNode; }
+  function renderExcalidrawTopRight() { return null; }
 
   const panelNode = rightPanel ? (
     <>
@@ -1935,7 +1935,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
             </Excalidraw>
           </div>
           {titleNode}
-          {isPhone && <div className="room-topright-phone">{topRightNode}</div>}
+          <div className="room-topright-phone">{topRightNode}</div>
           {toolsNode}
           {dockNode}
           {panelNode}
