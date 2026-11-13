@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight, ArrowUpRight, Eraser, Frame, Hand, Link2, ListChecks, MousePointer2, NotebookText, Presentation,
+  Menu, X, ArrowRight, ArrowUpRight, Eraser, Frame, Hand, Link2, ListChecks, MousePointer2, NotebookText, Presentation,
   Share2, Shapes, Sparkles, SquareKanban, Square, Circle, MoveUpRight, Type, Users, WandSparkles, Flag, Search,
   WifiOff, Spline, Layers, GitPullRequest, Zap, Check, ShieldCheck
 } from "lucide-react";
 import ArcMark from "../components/ArcMark.jsx";
 import Drawer from "../components/Drawer.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import RollText from "../components/RollText.jsx";
 
 /* ---------- Hero product mock ---------- */
 function BoardMock() {
@@ -112,6 +113,9 @@ function scrollToId(id) {
 export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
   const [feature, setFeature] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [slider, setSlider] = useState({ left: 0, width: 0, show: false });
+  const linksRef = useRef(null);
 
   // Nav morphs into a floating pill after a small scroll. Two thresholds stop it flickering at the edge.
   useEffect(function () {
@@ -130,6 +134,15 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
     };
   }, []);
 
+  function moveSlider(event) {
+    const target = event.currentTarget;
+    setSlider({ left: target.offsetLeft, width: target.offsetWidth, show: true });
+  }
+  function hideSlider() { setSlider(function (current) { return { ...current, show: false }; }); }
+  function toggleMenu() { setMenuOpen(function (open) { return !open; }); }
+  function closeMenu() { setMenuOpen(false); }
+  function menuGo(action) { return function () { setMenuOpen(false); action(); }; }
+
   function openBoards() { onContinue("boards"); }
   function openNotes() { onContinue("notes"); }
   function openWorkspace() { onContinue(); }
@@ -147,16 +160,25 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
       <header className={"hp-nav" + (scrolled ? " is-scrolled" : "")}>
         <div className="hp-nav-inner">
           <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
-          <nav className="hp-nav-links" aria-label="Sections">
-            <button type="button" onClick={goFeatures}>Product</button>
-            <button type="button" onClick={goModes}>Teamwork</button>
-            <button type="button" onClick={goSteps}>How it works</button>
+          <nav className="hp-nav-links" aria-label="Sections" ref={linksRef} onMouseLeave={hideSlider}>
+            <span className={"hp-nav-slider" + (slider.show ? " is-on" : "")} style={{ transform: "translateX(" + slider.left + "px)", width: slider.width + "px" }} aria-hidden="true" />
+            <button className="roll-host" type="button" onClick={goFeatures} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="Product" /></button>
+            <button className="roll-host" type="button" onClick={goModes} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="Teamwork" /></button>
+            <button className="roll-host" type="button" onClick={goSteps} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="How it works" /></button>
           </nav>
           <div className="hp-nav-right">
             <ThemeToggle compact />
-            <button className="text-button hp-signin" type="button" onClick={handleSignIn}>{user ? "Hi " + (user.name?.split(" ")[0] || "there") : "Sign in"}</button>
-            <button className="primary-button hp-nav-cta" type="button" onClick={openWorkspace}>{hasGuestSession || user ? "Open workspace" : "Get started free"}</button>
+            <button className="text-button hp-signin roll-host" type="button" onClick={handleSignIn}><RollText text={user ? "Hi " + (user.name?.split(" ")[0] || "there") : "Sign in"} /></button>
+            <button className="primary-button hp-nav-cta roll-host" type="button" onClick={openWorkspace}><RollText text={hasGuestSession || user ? "Open workspace" : "Get started free"} /></button>
+            <button className="hp-burger" type="button" onClick={toggleMenu} aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
           </div>
+        </div>
+        <div className={"hp-menu" + (menuOpen ? " is-open" : "")}>
+          <button className="hp-menu-cta" type="button" onClick={menuGo(openWorkspace)}>{hasGuestSession || user ? "Open workspace" : "Get started free"}</button>
+          <button type="button" onClick={menuGo(goFeatures)}>Product</button>
+          <button type="button" onClick={menuGo(goModes)}>Teamwork</button>
+          <button type="button" onClick={menuGo(goSteps)}>How it works</button>
+          <button type="button" onClick={menuGo(handleSignIn)}>{user ? "Open workspace" : "Sign in"}</button>
         </div>
       </header>
 

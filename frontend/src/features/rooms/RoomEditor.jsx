@@ -123,8 +123,15 @@ function inferComponentProperties(elements = []) {
 }
 
 export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, user, isAuthenticated = false }) {
+  const [isPhone, setIsPhone] = useState(function () { return typeof window !== "undefined" && window.matchMedia("(max-width: 599px)").matches; });
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
+  useEffect(function () {
+    const query = window.matchMedia("(max-width: 599px)");
+    function sync() { setIsPhone(query.matches); }
+    query.addEventListener("change", sync);
+    return function () { query.removeEventListener("change", sync); };
+  }, []);
   const [editorReady, setEditorReady] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
@@ -1355,8 +1362,8 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         : <span className="room-mode-chip" title="Set by the room owner">{collab.workMode === "commit" ? <GitPullRequest size={13} /> : <Zap size={13} />}{collab.workMode === "commit" ? "Commit mode" : "Live mode"}</span>)}
       {avatarsNode}
       {readOnly && <span className="room-viewonly">View only</span>}
-      {!isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> Sign in</button>}
-      {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> Share</button>}
+      {!isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> <span className="rt-label">Sign in</span></button>}
+      {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> <span className="rt-label">Share</span></button>}
       <Menu renderTrigger={renderMoreTrigger} items={menuItems} width={244} label="Room menu" />
     </div>
   );
@@ -1928,6 +1935,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
             </Excalidraw>
           </div>
           {titleNode}
+          {isPhone && <div className="room-topright-phone">{topRightNode}</div>}
           {toolsNode}
           {dockNode}
           {panelNode}
