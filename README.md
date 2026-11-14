@@ -75,16 +75,16 @@ Google/GitHub OAuth and Brevo email delivery are optional for local development.
 ## Current features
 
 - Email/password auth, 8-digit email/password-reset OTP, Google OAuth and GitHub OAuth.
-- HTTP-only access/refresh cookies with refresh-token rotation.
+- Revocable HTTP-only account cookies with no automatic JWT/session expiry; authentication ends only on explicit sign-out or sign-out-all.
 - Guest identity and local Rooms library in the browser, with separate **Boards** and **Notes** library filters and **Create board** / **Create notes** actions.
 - Dedicated Board rooms with the Excalidraw canvas, local Dexie/IndexedDB autosave, import and export. The board toolbar includes image upload, drag-and-drop, clipboard paste and editable sticky-note groups.
 - Dedicated Notes rooms with a full-width Markdown writing workspace, note library, search and preview. Notes are not shown beside the canvas.
 - Production PWA shell caching for reopening the app offline after it has been loaded once.
 - Account-backed cloud Rooms.
-- Share links with viewer/editor permission and expiry/revocation.
+- Share links with viewer/editor permission and expiry/revocation. Editor links open a read-only preview and require owner approval before a person becomes a workspace member.
 - Live multi-user scene synchronization using Yjs over Socket.IO. Board rooms and notes rooms use the same room identity, permissions, presence and sync path.
 - Room Project panel in both room types with tasks, milestones, status, priority, due dates and live-room assignees. Board tasks link directly to canvas elements; Notes tasks link directly to notes. Project data is cached in IndexedDB, persisted in the room Yjs document and included in editable exports/checkpoints.
-- Live participant presence and remote pointer cursors.
+- Persistent workspace member roster, owner-approved join requests, live participant presence and remote pointer cursors.
 - Room Discussion panel with persistent Yjs chat messages, canvas-anchored comments, threaded replies, resolve/reopen controls and jump-to-object navigation. Discussion is shared by authenticated cloud-room collaborators.
 - Board image insertion through a dedicated file picker, drag-and-drop and image paste. Images are downsampled/compressed before being stored in Excalidraw's file cache, local room record and cloud Yjs document. Notes can also attach images and render them from room assets.
 - Design Studio component masters, inserted instances, per-instance text/color/visibility properties, captured variants with their own properties, and update-master propagation to default instances. Layer tools also support grouping/ungrouping selected objects.
@@ -145,6 +145,7 @@ arcdraw/
 - Never commit `backend/.env` or put server secrets in `frontend/.env`.
 - Share URLs are bearer invitations; anyone with a valid link can use its permission after signing in. Revoke links when no longer needed.
 - Cloud collaboration requires HTTPS in production so HTTP-only secure cookies can be used.
+- Account authentication has no automatic access-token or inactivity timeout. The HTTP-only cookie is browser-managed; explicit sign-out, sign-out-all and password reset revoke the server-side session and its live collaboration sockets.
 - This version keeps active Yjs rooms in one server process. Multi-instance deployments need a shared Socket.IO adapter and coordinated persistence.
 - Same-element concurrent canvas edits are whole-element last-writer-wins, not property-level merges. Component master records are updated per component; independent component records/tokens no longer share one global serialized blob.
 - Folder organization is currently local to a browser; it is not a cloud team folder hierarchy.

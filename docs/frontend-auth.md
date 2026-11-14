@@ -18,8 +18,8 @@ The React account UI is implemented in `frontend/src/features/auth/AuthPage.jsx`
 - `services/authService.js` wraps the existing backend authentication endpoints.
 - `services/apiClient.js` sends requests with `credentials: include` so browser-managed HTTP-only cookies are sent.
 - `GET /api/v1/auth/providers` advertises whether Google and GitHub OAuth are configured. It returns booleans only, never client secrets.
-- `AuthProvider` checks `/auth/me` on startup and attempts `/auth/refresh` if the access cookie has expired.
-- Access and refresh tokens are not stored in localStorage or sessionStorage.
+- `AuthProvider` checks `/auth/me` on startup. The authentication cookie has no app-defined max-age, JWT expiry, refresh cycle or inactivity timeout; sessions end only on explicit sign-out or sign-out-all. The browser controls the lifetime of a session cookie.
+- The access credential stays in an HTTP-only cookie and is never exposed to JavaScript or browser storage.
 - `AuthPage` calls the existing email OTP endpoints and only displays `developmentOtp` when the backend returns that development-only field.
 
 ## Guest behavior

@@ -15,7 +15,7 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
   try {
     const payload = verifyAccessToken(token);
     if (!payload.sid) throw new Error("Session reference missing");
-    const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
+    const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null }).select("_id").lean();
     if (!session) throw new Error("Session revoked");
     req.auth = { userId: payload.sub, sessionId: payload.sid };
     next();

@@ -13,6 +13,8 @@ import {
 } from "../utils/cookies.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { safeStringEqual } from "../utils/crypto.js";
+import { verifyAccessToken } from "../services/token.service.js";
+import { revokeAuthSockets } from "../sockets/collaboration.socket.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
   emailOnlySchema,
@@ -87,14 +89,18 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  await authService.revokeRefreshSession(req.cookies?.[AUTH_COOKIE_NAMES.refresh]);
+  const accessToken = req.cookies?.[AUTH_COOKIE_NAMES.access];
+  if (accessToken) {
+    try {
+      const payload = verifyAccessToken(accessToken);
+      await authService.revokeSession(payload.sid, payload.sub);
+      await revokeAuthSockets(req.app.get("io"), { sessionId: payload.sid });
+    } catch {
+      // Always clear cookies, including when the token is malformed or already revoked.
+    }
+  }
   clearAuthCookies(res);
   return res.status(200).json({ success: true, message: "Signed out successfully" });
-});
-
-export const refresh = asyncHandler(async (req, res) => {
-  const session = await authService.rotateRefreshSession(req.cookies?.[AUTH_COOKIE_NAMES.refresh], sessionMetadata(req));
-  return sendSession(res, session);
 });
 
 export const me = asyncHandler(async (req, res) => {
@@ -104,6 +110,7 @@ export const me = asyncHandler(async (req, res) => {
 
 export const logoutAll = asyncHandler(async (req, res) => {
   await authService.revokeAllSessions(req.auth.userId);
+  await revokeAuthSockets(req.app.get("io"), { userId: req.auth.userId });
   clearAuthCookies(res);
   return res.status(200).json({ success: true, message: "All sessions have been signed out" });
 });
@@ -121,7 +128,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const input = resetPasswordSchema.parse(req.body);
-  await authService.resetPasswordWithOtp(input);
+  const userId = await authService.resetPasswordWithOtp(input);
+  await revokeAuthSockets(req.app.get("io"), { userId });
   clearAuthCookies(res);
   return res.status(200).json({ success: true, message: "Password updated. Please sign in again." });
 });

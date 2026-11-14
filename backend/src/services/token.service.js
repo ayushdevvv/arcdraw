@@ -1,16 +1,14 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
-import { createOpaqueToken, hashToken } from "../utils/crypto.js";
 
+// Access tokens intentionally have no time-based expiry. Their session id is
+// checked against MongoDB on every request, so logout and logout-all still
+// revoke them immediately.
 export function createAccessToken(userId, sessionId) {
   return jwt.sign(
     { sub: userId.toString(), sid: sessionId ? sessionId.toString() : undefined },
     env.JWT_ACCESS_SECRET,
-    {
-      expiresIn: "15m",
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE
-    }
+    { issuer: env.JWT_ISSUER, audience: env.JWT_AUDIENCE }
   );
 }
 
@@ -19,9 +17,4 @@ export function verifyAccessToken(token) {
     issuer: env.JWT_ISSUER,
     audience: env.JWT_AUDIENCE
   });
-}
-
-export function createRefreshToken() {
-  const token = createOpaqueToken(48);
-  return { token, tokenHash: hashToken(token) };
 }

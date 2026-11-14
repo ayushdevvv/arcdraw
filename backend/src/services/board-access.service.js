@@ -27,7 +27,14 @@ export async function getBoardAccess({ boardId, userId, shareToken = null }) {
       && (!share.expiresAt || share.expiresAt > new Date());
     if (isValid) {
       await BoardShare.updateOne({ _id: share._id }, { $set: { lastUsedAt: new Date() } });
-      return { board, role: share.permission, share };
+      if (share.permission === "editor") {
+        throw new ApiError(
+          403,
+          "This edit link needs owner approval. Request to join the workspace first.",
+          "WORKSPACE_JOIN_REQUIRED"
+        );
+      }
+      return { board, role: "viewer", share };
     }
   }
 

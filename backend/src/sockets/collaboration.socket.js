@@ -111,6 +111,23 @@ export async function revokeBoardShareSockets(io, boardId, shareId) {
   }
 }
 
+export async function revokeAuthSockets(io, { sessionId = null, userId = null } = {}) {
+  if (!io || (!sessionId && !userId)) return;
+  let sockets;
+  try {
+    sockets = await io.fetchSockets();
+  } catch (error) {
+    // Sign-out must still succeed if the optional socket adapter is unavailable.
+    console.warn("[collaboration] Could not enumerate sockets during auth revocation:", error.message);
+    return;
+  }
+  for (const socket of sockets) {
+    const matchesSession = sessionId && socket.data.sessionId === String(sessionId);
+    const matchesUser = userId && socket.data.userId === String(userId);
+    if (matchesSession || matchesUser) socket.disconnect(true);
+  }
+}
+
 export function attachCollaborationSocket(httpServer, env) {
   const io = new Server(httpServer, {
     cors: {
@@ -131,11 +148,12 @@ export function attachCollaborationSocket(httpServer, env) {
       if (!token) return next(new Error("Sign in to collaborate."));
       const payload = verifyAccessToken(token);
       if (!payload.sid) return next(new Error("Sign in to collaborate."));
-      const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
-      if (!session) return next(new Error("Your session has expired. Sign in again."));
+      const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null }).select("_id").lean();
+      if (!session) return next(new Error("Your sign-in was revoked. Sign in again."));
       const user = await User.findById(payload.sub).select("name avatarUrl").lean();
       if (!user) return next(new Error("Account not found."));
       socket.data.userId = String(user._id);
+      socket.data.sessionId = String(payload.sid);
       socket.data.profile = { name: user.name, avatarUrl: user.avatarUrl || null };
       socket.data.boards = new Map();
       socket.data.shareExpiryTimers = new Map();

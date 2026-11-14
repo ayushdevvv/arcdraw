@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   getCurrentUser,
-  refreshSession as refreshAccountSession,
   login as loginRequest,
   logout as logoutRequest
 } from "../services/authService.js";
@@ -15,13 +14,7 @@ function bootstrapAccountSession() {
       try {
         return await getCurrentUser();
       } catch (error) {
-        if (error.status === 401) {
-          try { return await refreshAccountSession(); }
-          catch (refreshError) {
-            if (refreshError.status === 401) return { user: null };
-            throw refreshError;
-          }
-        }
+        if (error.status === 401) return { user: null };
         throw error;
       }
     })().finally(() => {
@@ -32,8 +25,8 @@ function bootstrapAccountSession() {
 }
 
 /**
- * Account state is backed by HTTP-only cookies. Tokens never enter localStorage.
- * Guest drafts remain in the separate guest/IndexedDB system until migration is built.
+ * Account state uses a revocable HTTP-only cookie. There is no timed access
+ * token, refresh cycle, or inactivity logout; sessions end only on sign-out.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -42,7 +35,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
-
     bootstrapAccountSession()
       .then((result) => {
         if (!active) return;
@@ -50,12 +42,10 @@ export function AuthProvider({ children }) {
         setStatus(result.user ? "authenticated" : "anonymous");
       })
       .catch(() => {
-        // The app remains usable as a guest when the API is unavailable.
         if (!active) return;
         setUser(null);
         setStatus("anonymous");
       });
-
     return () => { active = false; };
   }, []);
 
@@ -67,7 +57,6 @@ export function AuthProvider({ children }) {
     return result;
   }, []);
 
-  // Used after email verification, where the server has already set the session cookies.
   const completeSignIn = useCallback((nextUser) => {
     setUser(nextUser || null);
     setStatus(nextUser ? "authenticated" : "anonymous");
@@ -78,7 +67,7 @@ export function AuthProvider({ children }) {
     try {
       await logoutRequest();
     } catch {
-      // Local guest work is retained even when the API is unavailable.
+      // Keep the UI responsive even when the API is unavailable.
     } finally {
       setUser(null);
       setStatus("anonymous");

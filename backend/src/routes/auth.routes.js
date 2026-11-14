@@ -25,7 +25,6 @@ router.post("/verify-email", sensitiveAuthRateLimiter, authController.verifyEmai
 router.post("/resend-verification", sensitiveAuthRateLimiter, authController.resendVerification);
 router.post("/login", authRateLimiter, authController.login);
 router.post("/logout", authController.logout);
-router.post("/refresh", authRateLimiter, authController.refresh);
 router.get("/me", requireAuth, authController.me);
 router.post("/logout-all", requireAuth, authController.logoutAll);
 router.post("/forgot-password", sensitiveAuthRateLimiter, authController.forgotPassword);

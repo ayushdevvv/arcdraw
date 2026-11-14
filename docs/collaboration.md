@@ -43,13 +43,14 @@ The API defaults to `http://localhost:5000`; the web client defaults to `http://
 3. Create a local room and open it.
 4. Select **Share**. This first saves the room to the cloud, then creates an invite link.
 5. Choose **Can edit** and copy the link.
-6. Open the link in browser profile B (or a second browser). Sign in with a different Arcdraw account.
-7. Both users should see a Live status and participant avatars. Draw a new shape on A; it should appear on B. Move the pointer to see the remote cursor.
-8. Draw on B; the update should appear on A.
-9. In profile A, choose **Commit**, enter a message and save a checkpoint. Open **History** to see its short hash, sequence, parent checkpoint, author and timestamp.
-10. Restore a checkpoint to create a new restore checkpoint without deleting later history.
-11. Try a viewer link: that account can inspect the room and receive live updates but cannot edit, commit or create share links.
-12. Revoke a link from the Share dialog. Connected sockets using that link are removed from the room and notified.
+6. Open the link in browser profile B (or a second browser). Sign in with a different Arcdraw account. The room opens as a read-only preview.
+7. In profile B, click **Join workspace**. The request appears in profile A under the people control in the top bar.
+8. In profile A, open **People** and approve the request. Profile B can then click **Check access**; the room joins as an editor and starts live synchronization.
+9. Draw a new shape on A; it should appear on B. Move the pointer to see the remote cursor. Draw on B; the update should appear on A.
+10. In profile A, choose **Commit**, enter a message and save a checkpoint. Open **History** to see its short hash, sequence, parent checkpoint, author and timestamp.
+11. Restore a checkpoint to create a new restore checkpoint without deleting later history.
+12. Try a viewer link: that account can inspect the room and receive live updates but cannot edit, commit or create share links. Viewer links do not create join requests.
+13. Revoke a link from the Share dialog. Connected sockets using that link are removed from the room and notified.
 
 Use different accounts to test permissions. Opening two tabs in the same signed-in account is useful for visual sync tests but does not test account-to-account authorization independently.
 
@@ -64,6 +65,10 @@ All cloud room routes require an account session. The HTTP resource path retains
 - `GET /api/v1/boards/:boardId/shares` — list active links.
 - `DELETE /api/v1/boards/:boardId/shares/:shareId` — revoke a link.
 - `POST /api/v1/shares/resolve` — resolve a share token after sign-in.
+- `POST /api/v1/shares/request-join` — request membership using an edit link.
+- `GET /api/v1/boards/:boardId/members` — owner-only member roster and pending requests.
+- `POST /api/v1/boards/:boardId/join-requests/:requestId/approve` — approve a join request.
+- `POST /api/v1/boards/:boardId/join-requests/:requestId/reject` — decline a join request.
 - `GET /api/v1/boards/:boardId/commits` — list named checkpoints.
 - `POST /api/v1/boards/:boardId/commits` — create a named checkpoint.
 - `POST /api/v1/boards/:boardId/commits/:commitId/restore` — restore a checkpoint as a new version.
@@ -92,7 +97,9 @@ A checkpoint stores a complete encoded Yjs document snapshot plus message, autho
 
 - Use two separate browser profiles and two different Arcdraw accounts.
 - In profile A, create a room, draw two separate shapes, then create an editor link.
-- In profile B, open the link, authenticate and wait for the Live indicator.
+- In profile B, open the link, authenticate, confirm the preview is read-only and click **Join workspace**.
+- In profile A, open **People**, approve the pending request, and confirm the member now appears in the roster.
+- In profile B, click **Check access** and wait for the Live indicator.
 - Move both pointers and confirm name-labelled cursors and participant badges appear.
 - Have A move shape 1 while B moves shape 2 at roughly the same time. Both final positions should appear on both screens. This specifically exercises element-level diff publishing.
 - Have both users change the same shape simultaneously. One complete element version will win deterministically; individual properties are not yet merged independently.

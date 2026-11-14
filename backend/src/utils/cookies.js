@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { AUTH_COOKIE_NAMES, AUTH_PATH, ACCESS_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
+import { AUTH_COOKIE_NAMES, AUTH_PATH } from "../constants/auth.constants.js";
 
 function baseCookieOptions() {
   return {
@@ -10,25 +10,21 @@ function baseCookieOptions() {
   };
 }
 
-export function setAuthCookies(res, { accessToken, refreshToken }) {
+export function setAuthCookies(res, { accessToken }) {
+  const base = baseCookieOptions();
+  // Remove any fixed-lifetime refresh cookie left by v0.14.2 or earlier.
+  res.clearCookie(AUTH_COOKIE_NAMES.refresh, { ...base, path: AUTH_PATH });
+  // No maxAge/expires: the cookie has no app-defined inactivity or session timer.
   res.cookie(AUTH_COOKIE_NAMES.access, accessToken, {
-    ...baseCookieOptions(),
-    path: "/",
-    maxAge: ACCESS_COOKIE_MAX_AGE_MS
+    ...base,
+    path: "/"
   });
-  if (refreshToken) {
-    res.cookie(AUTH_COOKIE_NAMES.refresh, refreshToken, {
-      ...baseCookieOptions(),
-      path: AUTH_PATH,
-      maxAge: env.SESSION_DAYS * 24 * 60 * 60 * 1000
-    });
-  }
 }
 
 export function clearAuthCookies(res) {
   const base = baseCookieOptions();
   res.clearCookie(AUTH_COOKIE_NAMES.access, { ...base, path: "/" });
-  // Clean up the old refresh cookie from earlier deployments.
+  // Remove the legacy refresh cookie created by earlier ArcDraw releases.
   res.clearCookie(AUTH_COOKIE_NAMES.refresh, { ...base, path: AUTH_PATH });
 }
 

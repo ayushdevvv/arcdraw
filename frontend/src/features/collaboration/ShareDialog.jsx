@@ -51,7 +51,7 @@ export default function ShareDialog({ board, link, shareToken = null, onCreate, 
           <label className={`share-permission-option ${permission === "editor" ? "selected" : ""}`}>
             <input type="radio" name="share-permission" value="editor" checked={permission === "editor"} onChange={() => setPermission("editor")} />
             <span className="share-permission-icon"><Pencil size={17} strokeWidth={1.8} /></span>
-            <span><strong>Can edit</strong><small>Draw and write</small></span>
+            <span><strong>Can edit</strong><small>Owner approval to join</small></span>
           </label>
           <label className={`share-permission-option ${permission === "viewer" ? "selected" : ""}`}>
             <input type="radio" name="share-permission" value="viewer" checked={permission === "viewer"} onChange={() => setPermission("viewer")} />

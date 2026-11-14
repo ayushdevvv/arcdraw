@@ -37,6 +37,27 @@ export async function getSharedBoard(token) {
   return result.data;
 }
 
+export async function requestWorkspaceJoin(token) {
+  const result = await apiRequest("/shares/request-join", {
+    method: "POST",
+    body: JSON.stringify({ token })
+  });
+  return result.data;
+}
+
+export async function getBoardMembers(boardId) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/members`);
+  return result.data;
+}
+
+export async function reviewWorkspaceJoinRequest(boardId, requestId, action) {
+  const result = await apiRequest(
+    `/boards/${encodeURIComponent(boardId)}/join-requests/${encodeURIComponent(requestId)}/${action}`,
+    { method: "POST", body: JSON.stringify({}) }
+  );
+  return result.data;
+}
+
 export async function getCommitHistory(boardId, shareToken = null) {
   const headers = shareToken ? { "X-Board-Share-Token": shareToken } : {};
   const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/commits`, { headers });

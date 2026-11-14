@@ -22,16 +22,11 @@ export async function generateRoomDesign(prompt, roomContext, { onProgress, sign
         signal: controller.signal
       });
     }
-    let response = await postDesign();
-    if (response.status === 401) {
-      // The short lived access token may have expired. Refresh once and retry before giving up.
-      const refreshed = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include", signal: controller.signal }).catch(() => null);
-      if (refreshed?.ok) response = await postDesign();
-    }
+    const response = await postDesign();
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw createStreamError(response.status === 401 ? "Your session expired. Please sign in again." : (payload.error?.message || "The Design Agent request failed."), {
+      throw createStreamError(response.status === 401 ? "Sign in to use the Design Agent." : (payload.error?.message || "The Design Agent request failed."), {
         status: response.status,
         code: payload.error?.code || "AGENT_REQUEST_FAILED"
       });

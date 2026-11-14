@@ -57,7 +57,7 @@ export function useBoardCollaboration({
   const callbacksRef = useRef({});
   callbacksRef.current = { onModeChange, onProposalEvent, onRemoteDiscussion };
 
-  const startRole = roleHint === "editor" || roleHint === "viewer" ? roleHint : "owner";
+  const startRole = roleHint === "editor" || roleHint === "viewer" ? roleHint : roleHint === "invited" ? "viewer" : "owner";
   const [status, setStatus] = useState("idle");
   const [role, setRole] = useState(startRole);
   const [workMode, setWorkMode] = useState(initialWorkMode || "live");

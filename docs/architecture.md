@@ -26,12 +26,13 @@ Email/password, Google and GitHub sign-in resolve to a common MongoDB User docum
 ## Session lifecycle
 
 1. Password sign-in or Google/GitHub OAuth resolves a verified user.
-2. API creates a short-lived JWT access token and a random opaque refresh token.
-3. Access token is placed in an HTTP-only cookie scoped to `/`.
-4. Refresh token is placed in an HTTP-only cookie scoped to `/api/v1/auth`.
-5. Only a SHA-256 hash of the refresh token is stored in MongoDB.
-6. Refresh requests atomically revoke the old session and create a replacement session.
-7. Reuse of a revoked refresh token revokes the user's active refresh sessions.
+2. The API creates a MongoDB session record and signs a JWT containing the user ID and session record ID. The JWT has no time-based expiry.
+3. The credential is stored only in an HTTP-only, SameSite cookie. The cookie has no app-defined `maxAge` or `expires` value.
+4. Every API and Socket.IO connection checks that the referenced MongoDB session exists and has not been revoked.
+5. Sign-out revokes the current session; sign-out-all and password reset revoke all active sessions for the user.
+6. The old refresh-token endpoint, 15-minute access-token expiry, 30-day session expiry and MongoDB TTL index are removed. Startup drops legacy `expiresAt_1` and `tokenHash_1` indexes left by earlier releases.
+
+The browser controls the lifetime of a session cookie. OTP expiry and optional share-link expiry are separate security controls and remain enabled.
 
 ## Guest and account-backed actions
 

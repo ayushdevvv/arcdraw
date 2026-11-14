@@ -4,10 +4,11 @@ import { hashToken } from "../utils/crypto.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { requireAccount } from "../middlewares/auth.middleware.js";
-import { openShareLink } from "../controllers/shares.controller.js";
+import { openShareLink, requestWorkspaceJoin } from "../controllers/shares.controller.js";
 
 const router = express.Router();
 router.use(requireAccount);
+router.post("/request-join", requestWorkspaceJoin);
 router.post("/resolve", asyncHandler(async (req, res, next) => {
   const token = req.body?.token;
   if (typeof token !== "string" || !/^[A-Za-z0-9_-]{32,100}$/.test(token)) {
@@ -19,6 +20,7 @@ router.post("/resolve", asyncHandler(async (req, res, next) => {
   }
   req.shareBoardId = String(share.board);
   req.shareToken = token;
+  req.share = share;
   next();
 }), openShareLink);
 export default router;

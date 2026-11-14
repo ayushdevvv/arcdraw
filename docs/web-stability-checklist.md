@@ -33,7 +33,7 @@ Desktop/Tauri is deliberately deferred. Treat the browser/PWA as the supported p
 - [ ] Verify dependency cycle choices are rejected/filtered and deleting a task cleans its references.
 - [ ] Confirm task-to-canvas and task-to-note links navigate to the correct target.
 - [ ] Test room chat, comment threads, viewer read-only behavior and commit/review changes.
-- [ ] Test invite expiry/revocation and account session logout, logout-all, password reset and access-token refresh.
+- [ ] Test invite expiry/revocation and account sign-out, sign-out-all and password-reset revocation, including an already-open collaboration socket. Confirm there is no timed auth refresh or session expiry.
 - [ ] Test two editors changing different objects, the same object, different task fields, and the same task field.
 
 ## Operational readiness

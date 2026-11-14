@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { z } from "zod";
 import Board from "../models/Board.model.js";
 import BoardShare from "../models/BoardShare.model.js";
+import BoardJoinRequest from "../models/BoardJoinRequest.model.js";
+import User from "../models/User.model.js";
 import BoardDocument from "../models/BoardDocument.model.js";
 import { createOpaqueToken, hashToken } from "../utils/crypto.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -203,6 +205,78 @@ export const revokeShareLink = asyncHandler(async (req, res) => {
   if (!result.modifiedCount) throw new ApiError(404, "Share link not found.", "SHARE_NOT_FOUND");
   await revokeBoardShareSockets(req.app.get("io"), board._id, req.params.shareId);
   res.json({ success: true, message: "Share link revoked." });
+});
+
+
+export const getBoardMembers = asyncHandler(async (req, res) => {
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
+  if (role !== "owner") throw new ApiError(403, "Only the workspace owner can view and manage its people.", "OWNER_ONLY");
+
+  const [owner, members, requests] = await Promise.all([
+    User.findById(board.owner).select("name email avatarUrl").lean(),
+    User.find({ _id: { $in: board.members.map((item) => item.user) } }).select("name email avatarUrl").lean(),
+    BoardJoinRequest.find({ board: board._id, status: "pending" })
+      .sort({ requestedAt: 1 })
+      .populate("user", "name email avatarUrl")
+      .lean()
+  ]);
+
+  const userById = new Map(members.map((member) => [String(member._id), member]));
+  res.json({
+    success: true,
+    data: {
+      owner: owner ? { id: String(owner._id), name: owner.name, email: owner.email, avatarUrl: owner.avatarUrl || null, role: "owner" } : null,
+      members: board.members.map((entry) => {
+        const member = userById.get(String(entry.user));
+        return member ? {
+          id: String(member._id), name: member.name, email: member.email,
+          avatarUrl: member.avatarUrl || null, role: entry.role, joinedAt: entry.joinedAt
+        } : null;
+      }).filter(Boolean),
+      requests: requests.map((request) => ({
+        id: String(request._id), status: request.status, requestedAt: request.requestedAt,
+        user: request.user ? {
+          id: String(request.user._id), name: request.user.name,
+          email: request.user.email, avatarUrl: request.user.avatarUrl || null
+        } : null
+      })).filter((request) => request.user)
+    }
+  });
+});
+
+export const reviewBoardJoinRequest = asyncHandler(async (req, res) => {
+  const action = req.params.action;
+  if (!["approve", "reject"].includes(action)) {
+    throw new ApiError(400, "Choose approve or reject.", "JOIN_REVIEW_ACTION_INVALID");
+  }
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
+  if (role !== "owner") throw new ApiError(403, "Only the workspace owner can review join requests.", "OWNER_ONLY");
+
+  const request = await BoardJoinRequest.findOne({
+    _id: req.params.requestId,
+    board: board._id,
+    status: "pending"
+  });
+  if (!request) throw new ApiError(404, "This join request is no longer pending.", "JOIN_REQUEST_NOT_FOUND");
+
+  if (action === "approve") {
+    // Make membership insertion atomic so repeated approvals cannot add the
+    // same person twice when the owner clicks from multiple tabs/devices.
+    await Board.updateOne(
+      { _id: board._id, "members.user": { $ne: request.user } },
+      { $push: { members: { user: request.user, role: "editor", joinedAt: new Date() } } }
+    );
+  }
+
+  request.status = action === "approve" ? "approved" : "rejected";
+  request.reviewedAt = new Date();
+  request.reviewedBy = req.auth.userId;
+  await request.save();
+
+  res.json({
+    success: true,
+    data: { status: request.status, userId: String(request.user) }
+  });
 });
 
 export const getCommitHistory = asyncHandler(async (req, res) => {
