@@ -53,6 +53,7 @@ export async function createBoard(guestId, title = "Untitled room", scene = {}) 
     guestId,
     title: title.trim() || "Untitled room",
     kind: scene.kind === "notes" ? "notes" : "board",
+    visibility: scene.visibility === "public" ? "public" : "private",
     folderId: scene.folderId || null,
     designStudio: normalizeDesignStudio(scene.designStudio),
     elements: Array.isArray(scene.elements) ? scene.elements : [],
@@ -113,6 +114,12 @@ export async function setBoardCloudLink(guestId, boardId, cloudId, shareToken = 
     permission: permission || board.permission || null,
     updatedAt: new Date().toISOString()
   });
+}
+
+export async function updateBoardVisibilityLocal(guestId, boardId, visibility) {
+  const board = await getBoard(guestId, boardId);
+  if (!board) throw new Error("Room not found.");
+  await db.boards.update(boardId, { visibility: visibility === "public" ? "public" : "private", updatedAt: new Date().toISOString() });
 }
 
 export async function listBoards(guestId) {

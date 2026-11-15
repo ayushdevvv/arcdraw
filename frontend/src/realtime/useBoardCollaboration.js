@@ -57,7 +57,7 @@ export function useBoardCollaboration({
   const callbacksRef = useRef({});
   callbacksRef.current = { onModeChange, onProposalEvent, onRemoteDiscussion };
 
-  const startRole = roleHint === "editor" || roleHint === "viewer" ? roleHint : roleHint === "invited" ? "viewer" : "owner";
+  const startRole = roleHint === "editor" || roleHint === "viewer" ? roleHint : "owner";
   const [status, setStatus] = useState("idle");
   const [role, setRole] = useState(startRole);
   const [workMode, setWorkMode] = useState(initialWorkMode || "live");
@@ -265,6 +265,7 @@ export function useBoardCollaboration({
 
       socket = io(API_ORIGIN, {
         withCredentials: true,
+        auth: shareToken ? { shareToken } : {},
         // Start with polling and upgrade to WebSocket after the session is
         // established. This avoids failing the initial room connection on
         // dev proxies, restrictive networks, and hosts without WS upgrades.

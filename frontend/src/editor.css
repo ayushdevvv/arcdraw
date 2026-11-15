@@ -174,3 +174,6 @@
 .room-board .excalidraw .FixedSideContainer_side_top { width: calc(100% - 32px); }
 .room-board .excalidraw .App-menu_top { display: flex !important; width: 100%; }
 .room-board .excalidraw .App-menu_top__left { flex: 0 0 auto; }
+
+.room-join-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 15px; border: 1px solid var(--ink); border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.room-join-button:disabled { opacity: .65; cursor: default; }

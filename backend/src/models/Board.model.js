@@ -9,6 +9,7 @@ const memberSchema = new mongoose.Schema({
 const boardSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, minlength: 1, maxlength: 100 },
   kind: { type: String, enum: ["board", "notes"], default: "board" },
+  visibility: { type: String, enum: ["private", "public"], default: "private", index: true },
   // "live": every editor changes the room in real time.
   // "commit": only the owner changes the room directly. Editors work on a private
   // draft and submit it for the owner to review and merge.

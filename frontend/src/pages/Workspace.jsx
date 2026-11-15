@@ -316,6 +316,7 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
         const result = await createCloudBoard({
           title: room.title,
           kind: room.kind || "board",
+          visibility: room.visibility || "private",
           sourceLocalId: room.id,
           scene: { elements: room.elements || [], appState: room.appState || {}, files: room.files || {}, designStudio: room.designStudio || { tokens: [], components: [] } },
           notes,

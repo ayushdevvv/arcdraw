@@ -21,6 +21,7 @@ export const login = (data) => apiRequest("/auth/login", {
 });
 
 export const logout = () => apiRequest("/auth/logout", { method: "POST" });
+export const refreshSession = () => apiRequest("/auth/refresh", { method: "POST" });
 export const getCurrentUser = () => apiRequest("/auth/me");
 export const logoutAllSessions = () => apiRequest("/auth/logout-all", { method: "POST" });
 

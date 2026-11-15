@@ -3,7 +3,6 @@ import { z } from "zod";
 import Board from "../models/Board.model.js";
 import BoardShare from "../models/BoardShare.model.js";
 import BoardJoinRequest from "../models/BoardJoinRequest.model.js";
-import User from "../models/User.model.js";
 import BoardDocument from "../models/BoardDocument.model.js";
 import { createOpaqueToken, hashToken } from "../utils/crypto.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -60,6 +59,7 @@ const projectItemSchema = z.object({
 const createBoardSchema = z.object({
   title: z.string().trim().min(1).max(100),
   kind: z.enum(["board", "notes"]).optional().default("board"),
+  visibility: z.enum(["private", "public"]).optional().default("private"),
   sourceLocalId: z.string().min(1).max(100),
   scene: sceneSchema,
   notes: z.array(noteSchema).max(500).optional().default([]),
@@ -81,6 +81,7 @@ function boardDto(board, role) {
     id: String(board._id),
     title: board.title,
     kind: board.kind || "board",
+    visibility: board.visibility || "private",
     workMode: board.workMode || "live",
     owner: String(board.owner),
     role,
@@ -94,15 +95,16 @@ export const createCloudBoard = asyncHandler(async (req, res) => {
   const parsed = createBoardSchema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, "Invalid board payload.", "BOARD_PAYLOAD_INVALID", parsed.error.flatten());
 
-  const { title, kind, sourceLocalId, scene, notes, projectItems } = parsed.data;
+  const { title, kind, visibility, sourceLocalId, scene, notes, projectItems } = parsed.data;
   const completeScene = { ...scene, notes, projectItems };
   let board = await Board.findOne({ owner: req.auth.userId, sourceLocalId });
   if (!board) {
-    board = await Board.create({ title, kind, owner: req.auth.userId, sourceLocalId });
+    board = await Board.create({ title, kind, visibility, owner: req.auth.userId, sourceLocalId });
     await createBoardDocument(board._id, completeScene);
   } else {
     board.title = title;
     board.kind = kind;
+    board.visibility = visibility;
     await board.save();
     const documentExists = await BoardDocument.exists({ board: board._id });
     if (!documentExists) await createBoardDocument(board._id, completeScene);
@@ -138,6 +140,81 @@ export const updateBoardSettings = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { board: boardDto(board, role) } });
 });
 
+export const updateBoardVisibility = asyncHandler(async (req, res) => {
+  const parsed = z.object({ visibility: z.enum(["private", "public"]) }).safeParse(req.body);
+  if (!parsed.success) throw new ApiError(400, "Choose public or private access.", "ROOM_VISIBILITY_INVALID");
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
+  if (role !== "owner") throw new ApiError(403, "Only the room owner can change access.", "OWNER_ONLY");
+  board.visibility = parsed.data.visibility;
+  await board.save();
+  res.json({ success: true, data: { board: boardDto(board, role) } });
+});
+
+export const requestToJoinBoard = asyncHandler(async (req, res) => {
+  const token = typeof req.body?.shareToken === "string" ? req.body.shareToken : null;
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId, shareToken: token });
+  if (role === "owner" || role === "editor") {
+    return res.json({ success: true, data: { status: "joined", role } });
+  }
+  const existingMember = board.members.find((entry) => String(entry.user) === String(req.auth.userId));
+
+  // Public rooms immediately promote a previously view-only member as well.
+  if ((board.visibility || "private") === "public") {
+    if (existingMember) existingMember.role = "editor";
+    else board.members.push({ user: req.auth.userId, role: "editor" });
+    await board.save();
+    await BoardJoinRequest.updateOne(
+      { board: board._id, user: req.auth.userId },
+      { $set: { status: "approved", resolvedAt: new Date(), resolvedBy: board.owner } }
+    );
+    return res.json({ success: true, data: { status: "joined", role: "editor" } });
+  }
+
+  let request = await BoardJoinRequest.findOne({ board: board._id, user: req.auth.userId });
+  if (!request) {
+    request = await BoardJoinRequest.create({ board: board._id, user: req.auth.userId, status: "pending" });
+  } else if (request.status !== "pending") {
+    request.status = "pending";
+    request.resolvedAt = null;
+    request.resolvedBy = null;
+    await request.save();
+  }
+  res.status(202).json({ success: true, data: { status: request.status } });
+});
+
+export const listJoinRequests = asyncHandler(async (req, res) => {
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
+  if (role !== "owner") throw new ApiError(403, "Only the room owner can review join requests.", "OWNER_ONLY");
+  const requests = await BoardJoinRequest.find({ board: board._id, status: "pending" })
+    .sort({ createdAt: 1 })
+    .populate("user", "name email avatarUrl")
+    .lean();
+  res.json({ success: true, data: { requests: requests.map((item) => ({
+    id: String(item._id), status: item.status, createdAt: item.createdAt,
+    user: item.user ? { id: String(item.user._id), name: item.user.name, email: item.user.email, avatarUrl: item.user.avatarUrl || null } : null
+  })) } });
+});
+
+export const resolveJoinRequest = asyncHandler(async (req, res) => {
+  const parsed = z.object({ decision: z.enum(["approved", "rejected"]) }).safeParse(req.body);
+  if (!parsed.success) throw new ApiError(400, "Choose approve or reject.", "JOIN_REQUEST_DECISION_INVALID");
+  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
+  if (role !== "owner") throw new ApiError(403, "Only the room owner can review join requests.", "OWNER_ONLY");
+  const request = await BoardJoinRequest.findOne({ _id: req.params.requestId, board: board._id, status: "pending" });
+  if (!request) throw new ApiError(404, "Join request not found.", "JOIN_REQUEST_NOT_FOUND");
+  if (parsed.data.decision === "approved") {
+    const member = board.members.find((entry) => String(entry.user) === String(request.user));
+    if (member) member.role = "editor";
+    else board.members.push({ user: request.user, role: "editor" });
+    await board.save();
+  }
+  request.status = parsed.data.decision;
+  request.resolvedAt = new Date();
+  request.resolvedBy = req.auth.userId;
+  await request.save();
+  res.json({ success: true, data: { status: request.status } });
+});
+
 export const renameCloudBoard = asyncHandler(async (req, res) => {
   const parsed = z.object({ title: z.string().trim().min(1).max(100) }).safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, "Board title must be 1–100 characters.", "BOARD_TITLE_INVALID");
@@ -162,7 +239,7 @@ export const createShareLink = asyncHandler(async (req, res) => {
     board: board._id,
     createdBy: req.auth.userId,
     tokenHash: hashToken(token),
-    permission: parsed.data.permission,
+    permission: "viewer",
     expiresAt
   });
 
@@ -171,7 +248,7 @@ export const createShareLink = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     data: {
-      share: { id: String(share._id), permission: share.permission, expiresAt: share.expiresAt },
+      share: { id: String(share._id), permission: "viewer", expiresAt: share.expiresAt },
       url
     }
   });
@@ -205,78 +282,6 @@ export const revokeShareLink = asyncHandler(async (req, res) => {
   if (!result.modifiedCount) throw new ApiError(404, "Share link not found.", "SHARE_NOT_FOUND");
   await revokeBoardShareSockets(req.app.get("io"), board._id, req.params.shareId);
   res.json({ success: true, message: "Share link revoked." });
-});
-
-
-export const getBoardMembers = asyncHandler(async (req, res) => {
-  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
-  if (role !== "owner") throw new ApiError(403, "Only the workspace owner can view and manage its people.", "OWNER_ONLY");
-
-  const [owner, members, requests] = await Promise.all([
-    User.findById(board.owner).select("name email avatarUrl").lean(),
-    User.find({ _id: { $in: board.members.map((item) => item.user) } }).select("name email avatarUrl").lean(),
-    BoardJoinRequest.find({ board: board._id, status: "pending" })
-      .sort({ requestedAt: 1 })
-      .populate("user", "name email avatarUrl")
-      .lean()
-  ]);
-
-  const userById = new Map(members.map((member) => [String(member._id), member]));
-  res.json({
-    success: true,
-    data: {
-      owner: owner ? { id: String(owner._id), name: owner.name, email: owner.email, avatarUrl: owner.avatarUrl || null, role: "owner" } : null,
-      members: board.members.map((entry) => {
-        const member = userById.get(String(entry.user));
-        return member ? {
-          id: String(member._id), name: member.name, email: member.email,
-          avatarUrl: member.avatarUrl || null, role: entry.role, joinedAt: entry.joinedAt
-        } : null;
-      }).filter(Boolean),
-      requests: requests.map((request) => ({
-        id: String(request._id), status: request.status, requestedAt: request.requestedAt,
-        user: request.user ? {
-          id: String(request.user._id), name: request.user.name,
-          email: request.user.email, avatarUrl: request.user.avatarUrl || null
-        } : null
-      })).filter((request) => request.user)
-    }
-  });
-});
-
-export const reviewBoardJoinRequest = asyncHandler(async (req, res) => {
-  const action = req.params.action;
-  if (!["approve", "reject"].includes(action)) {
-    throw new ApiError(400, "Choose approve or reject.", "JOIN_REVIEW_ACTION_INVALID");
-  }
-  const { board, role } = await getBoardAccess({ boardId: req.params.boardId, userId: req.auth.userId });
-  if (role !== "owner") throw new ApiError(403, "Only the workspace owner can review join requests.", "OWNER_ONLY");
-
-  const request = await BoardJoinRequest.findOne({
-    _id: req.params.requestId,
-    board: board._id,
-    status: "pending"
-  });
-  if (!request) throw new ApiError(404, "This join request is no longer pending.", "JOIN_REQUEST_NOT_FOUND");
-
-  if (action === "approve") {
-    // Make membership insertion atomic so repeated approvals cannot add the
-    // same person twice when the owner clicks from multiple tabs/devices.
-    await Board.updateOne(
-      { _id: board._id, "members.user": { $ne: request.user } },
-      { $push: { members: { user: request.user, role: "editor", joinedAt: new Date() } } }
-    );
-  }
-
-  request.status = action === "approve" ? "approved" : "rejected";
-  request.reviewedAt = new Date();
-  request.reviewedBy = req.auth.userId;
-  await request.save();
-
-  res.json({
-    success: true,
-    data: { status: request.status, userId: String(request.user) }
-  });
 });
 
 export const getCommitHistory = asyncHandler(async (req, res) => {

@@ -6,7 +6,8 @@ const ACTION_COPY = {
   share: { icon: Link2, text: "Share this room with a link." },
   collaborate: { icon: Users, text: "Work on this room together." },
   invite: { icon: Users, text: "Invite people to your workspace." },
-  agent: { icon: Sparkles, text: "Generate and refine designs with the Design Agent." }
+  agent: { icon: Sparkles, text: "Generate and refine designs with the Design Agent." },
+  "edit-room": { icon: Users, text: "Sign in to join this room and start editing." }
 };
 
 export default function AccountGateModal({ action, onClose, onSignIn, isAuthenticated = false }) {

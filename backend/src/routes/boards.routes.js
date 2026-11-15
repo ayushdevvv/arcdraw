@@ -6,18 +6,21 @@ import {
 } from "../controllers/proposals.controller.js";
 import {
   createCloudBoard, getCloudBoard, renameCloudBoard, updateBoardSettings,
-  createShareLink, listShareLinks, revokeShareLink,
-  getCommitHistory, createCommit, restoreCommit, getBoardMembers, reviewBoardJoinRequest
+  createShareLink, listShareLinks, revokeShareLink, updateBoardVisibility,
+  requestToJoinBoard, listJoinRequests, resolveJoinRequest,
+  getCommitHistory, createCommit, restoreCommit
 } from "../controllers/boards.controller.js";
 
 const router = express.Router();
 router.use(requireAccount);
 router.post("/", createCloudBoard);
 router.get("/:boardId", getCloudBoard);
-router.get("/:boardId/members", getBoardMembers);
-router.post("/:boardId/join-requests/:requestId/:action", reviewBoardJoinRequest);
 router.patch("/:boardId", renameCloudBoard);
 router.patch("/:boardId/settings", updateBoardSettings);
+router.patch("/:boardId/visibility", updateBoardVisibility);
+router.post("/:boardId/join", requestToJoinBoard);
+router.get("/:boardId/join-requests", listJoinRequests);
+router.patch("/:boardId/join-requests/:requestId", resolveJoinRequest);
 router.get("/:boardId/proposals", getProposals);
 router.get("/:boardId/proposals/:proposalId/preview", getProposalPreview);
 router.post("/:boardId/proposals/:proposalId/accept", acceptProposalRequest);

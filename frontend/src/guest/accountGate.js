@@ -3,7 +3,8 @@ export const ACCOUNT_REQUIRED_ACTIONS = Object.freeze({
   SHARE: "share",
   COLLABORATE: "collaborate",
   INVITE: "invite",
-  AGENT: "agent"
+  AGENT: "agent",
+  EDIT_ROOM: "edit-room"
 });
 
 /**

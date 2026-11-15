@@ -1,9 +1,9 @@
 import { apiRequest } from "./apiClient.js";
 
-export async function createCloudBoard({ title, kind = "board", sourceLocalId, scene, notes = [], projectItems = [] }) {
+export async function createCloudBoard({ title, kind = "board", visibility = "private", sourceLocalId, scene, notes = [], projectItems = [] }) {
   const result = await apiRequest("/boards", {
     method: "POST",
-    body: JSON.stringify({ title, kind, sourceLocalId, scene, notes, projectItems })
+    body: JSON.stringify({ title, kind, visibility, sourceLocalId, scene, notes, projectItems })
   });
   return result.data;
 }
@@ -34,27 +34,6 @@ export async function getSharedBoard(token) {
     method: "POST",
     body: JSON.stringify({ token })
   });
-  return result.data;
-}
-
-export async function requestWorkspaceJoin(token) {
-  const result = await apiRequest("/shares/request-join", {
-    method: "POST",
-    body: JSON.stringify({ token })
-  });
-  return result.data;
-}
-
-export async function getBoardMembers(boardId) {
-  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/members`);
-  return result.data;
-}
-
-export async function reviewWorkspaceJoinRequest(boardId, requestId, action) {
-  const result = await apiRequest(
-    `/boards/${encodeURIComponent(boardId)}/join-requests/${encodeURIComponent(requestId)}/${action}`,
-    { method: "POST", body: JSON.stringify({}) }
-  );
   return result.data;
 }
 
@@ -98,6 +77,35 @@ export async function updateBoardSettings(boardId, { workMode }) {
     body: JSON.stringify({ workMode })
   });
   return result.data.board;
+}
+
+export async function updateBoardVisibility(boardId, visibility) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/visibility`, {
+    method: "PATCH",
+    body: JSON.stringify({ visibility })
+  });
+  return result.data.board;
+}
+
+export async function joinBoard(boardId, shareToken = null) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/join`, {
+    method: "POST",
+    body: JSON.stringify(shareToken ? { shareToken } : {})
+  });
+  return result.data;
+}
+
+export async function listJoinRequests(boardId) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/join-requests`);
+  return result.data.requests || [];
+}
+
+export async function resolveJoinRequest(boardId, requestId, decision) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/join-requests/${encodeURIComponent(requestId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ decision })
+  });
+  return result.data;
 }
 
 export async function listProposals(boardId, { shareToken = null, status = null } = {}) {

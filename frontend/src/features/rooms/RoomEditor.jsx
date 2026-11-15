@@ -3,7 +3,7 @@ import { Excalidraw, Footer, MainMenu, exportToBlob, sceneCoordsToViewportCoords
 import "@excalidraw/excalidraw/index.css";
 import {
   ArrowLeft, Check, ChevronDown, Download, FileJson, FileText, GitCommit, History,
-  Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, Wifi, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft, Users, RefreshCw,
+  Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, Wifi, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft,
   Moon, Sun, Pencil, Presentation, MousePointer2, Hand, Square, Diamond, Circle, MoveUpRight, Minus, PenLine, Type, ImagePlus, Eraser, Layers,
   SquareKanban, WandSparkles, Palette, Frame, Brush, MessageCircle, Grid3x3, Trash2, GitPullRequest, GitMerge, SlidersHorizontal, Zap, LogIn
 } from "lucide-react";
@@ -11,7 +11,7 @@ import Drawer from "../../components/Drawer.jsx";
 import Menu from "../../components/Menu.jsx";
 import {
   createBoard, findBoardByCloudId, getBoard, getExportPayload,
-  renameBoard, setBoardCloudLink, updateBoardScene, updateBoardDesignStudio
+  renameBoard, setBoardCloudLink, updateBoardScene, updateBoardDesignStudio, updateBoardVisibilityLocal
 } from "../../database/boardService.js";
 import { downloadBlob, safeFilename } from "../../utils/download.js";
 import { useNotes } from "../../database/useNotes.js";
@@ -30,7 +30,7 @@ import { useBoardCollaboration } from "../../realtime/useBoardCollaboration.js";
 import {
   createCloudBoard, createShareLink, createBoardCommit, restoreBoardCommit,
   getSharedBoard, renameCloudBoard, updateBoardSettings, listProposals,
-  requestWorkspaceJoin
+  updateBoardVisibility, joinBoard
 } from "../../services/boardCloudService.js";
 import { toast } from "../../components/toast/toastStore.js";
 import { friendlyError } from "../../utils/errors.js";
@@ -39,7 +39,6 @@ import ReviewDrawer from "../collaboration/ReviewDrawer.jsx";
 import ShareDialog from "../collaboration/ShareDialog.jsx";
 import CommitDialog from "../collaboration/CommitDialog.jsx";
 import HistoryDrawer from "../collaboration/HistoryDrawer.jsx";
-import MembersDrawer from "../collaboration/MembersDrawer.jsx";
 import DiscussionPanel from "../collaboration/DiscussionPanel.jsx";
 import "../../collaboration.css";
 
@@ -124,7 +123,7 @@ function inferComponentProperties(elements = []) {
   return properties.slice(0, 40);
 }
 
-export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, user, isAuthenticated = false }) {
+export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, onSignIn, user, isAuthenticated = false }) {
   const [isPhone, setIsPhone] = useState(function () { return typeof window !== "undefined" && window.matchMedia("(max-width: 599px)").matches; });
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,9 +143,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   const [shareBusy, setShareBusy] = useState(false);
   const [cloudSaveBusy, setCloudSaveBusy] = useState(false);
   const [shareLink, setShareLink] = useState("");
-  const [membersOpen, setMembersOpen] = useState(false);
   const [joinBusy, setJoinBusy] = useState(false);
-  const [joinError, setJoinError] = useState("");
   const [commitOpen, setCommitOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -275,7 +272,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   const collab = useBoardCollaboration({
     boardId: cloudBoardId,
-    localUserId: user?.id,
+    localUserId: user?.id || guestId,
     shareToken: effectiveShareToken,
     roleHint: board?.permission || null,
     initialWorkMode: board?.workMode || "live",
@@ -285,7 +282,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     initialNotes: notes,
     initialProjectItems: projectItems,
     initialDesignStudio: designStudio,
-    enabled: Boolean(isAuthenticated && cloudBoardId && user?.id && board?.permission !== "invited"),
+    enabled: Boolean(cloudBoardId && ((isAuthenticated && user?.id) || (shareToken && !isAuthenticated))),
     onRemoteScene: applyRemoteScene,
     onRemoteNotes: applyRemoteNotes,
     onRemoteProjectItems: applyRemoteProjectItems,
@@ -293,7 +290,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     onRemoteDiscussion: setDiscussion
   });
 
-  const isOwner = board?.permission === "owner" || (collab.status === "connected" ? collab.role === "owner" : !board?.permission);
+  const isOwner = collab.status === "connected" ? collab.role === "owner" : (board?.permission === "owner" || !board?.permission);
   roleRef.current = isOwner ? "owner" : collab.role;
   const inDraft = collab.draftState === "draft";
   const draftTotal = collab.draftSummary?.total || 0;
@@ -328,12 +325,12 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
     const load = async () => {
       if (shareToken) {
-        if (!isAuthenticated) throw new Error("Sign in to open this shared room.");
         const remote = await getSharedBoard(shareToken);
         let local = await findBoardByCloudId(guestId, remote.board.id);
         if (!local) {
-          local = await createBoard(guestId, remote.board.title, { ...remote.scene, kind: remote.board.kind || "board" });
+          local = await createBoard(guestId, remote.board.title, { ...remote.scene, kind: remote.board.kind || "board", visibility: remote.board.visibility || "private" });
         }
+        await updateBoardVisibilityLocal(guestId, local.id, remote.board.visibility || "private");
         await mergeRoomProjectItems(guestId, local.id, remote.scene.projectItems || []);
         await setBoardCloudLink(guestId, local.id, remote.board.id, shareToken, remote.board.role);
         await replaceRoomNotes(guestId, local.id, remote.scene.notes || []);
@@ -344,8 +341,9 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
           cloudId: remote.board.id,
           shareToken,
           permission: remote.board.role,
-          joinStatus: remote.board.joinStatus || "not_requested",
           workMode: remote.board.workMode || "live",
+          visibility: remote.board.visibility || "private",
+          joinStatus: remote.board.joinStatus || null,
           elements: local.elements?.length ? local.elements : remote.scene.elements,
           files: Object.keys(local.files || {}).length ? local.files : remote.scene.files,
           appState: local.appState || remote.scene.appState
@@ -1001,6 +999,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     const result = await createCloudBoard({
       title: board.title,
       kind: board.kind || "board",
+      visibility: board.visibility || "private",
       sourceLocalId: board.id,
       scene: getLiveScene(),
       notes: currentNotes,
@@ -1118,63 +1117,6 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     }
   };
 
-  const handleRequestWorkspaceJoin = async () => {
-    if (!effectiveShareToken || !isAuthenticated) return;
-    setJoinBusy(true);
-    setJoinError("");
-    try {
-      const result = await requestWorkspaceJoin(effectiveShareToken);
-      if (result.status === "joined") {
-        const refreshed = await getSharedBoard(effectiveShareToken);
-        setBoard((current) => current ? {
-          ...current,
-          permission: refreshed.board.role,
-          joinStatus: "joined",
-          workMode: refreshed.board.workMode || current.workMode
-        } : current);
-        toast.success("You're in. Workspace access is ready.");
-      } else {
-        setBoard((current) => current ? { ...current, joinStatus: "pending" } : current);
-        toast.success("Join request sent to the owner.");
-      }
-    } catch (error) {
-      setJoinError(friendlyError(error, "Couldn't request workspace access."));
-    } finally {
-      setJoinBusy(false);
-    }
-  };
-
-  const handleCheckWorkspaceAccess = async () => {
-    if (!effectiveShareToken) return;
-    setJoinBusy(true);
-    setJoinError("");
-    try {
-      const refreshed = await getSharedBoard(effectiveShareToken);
-      if (refreshed.board.role !== "invited") {
-        setBoard((current) => current ? {
-          ...current,
-          permission: refreshed.board.role,
-          joinStatus: "joined",
-          workMode: refreshed.board.workMode || current.workMode,
-          elements: refreshed.scene?.elements || current.elements,
-          appState: refreshed.scene?.appState || current.appState,
-          files: refreshed.scene?.files || current.files
-        } : current);
-        if (localBoardId && refreshed.scene) {
-          await updateBoardScene(guestId, localBoardId, refreshed.scene);
-          await replaceRoomNotes(guestId, localBoardId, refreshed.scene.notes || []);
-        }
-        toast.success("Access approved. You're now a workspace member.");
-      } else {
-        setBoard((current) => current ? { ...current, joinStatus: refreshed.board.joinStatus || "pending" } : current);
-      }
-    } catch (error) {
-      setJoinError(friendlyError(error, "Couldn't check workspace access."));
-    } finally {
-      setJoinBusy(false);
-    }
-  };
-
   const openShare = () => {
     if (!isAuthenticated) {
       onAccountRequired?.(ACCOUNT_REQUIRED_ACTIONS.SHARE);
@@ -1196,6 +1138,45 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
       flash(friendlyError(error, "Couldn't save this room to the cloud."));
     } finally {
       setCloudSaveBusy(false);
+    }
+  };
+
+  const handleJoinRoom = async () => {
+    if (!isAuthenticated) {
+      onAccountRequired?.(ACCOUNT_REQUIRED_ACTIONS.EDIT_ROOM);
+      return;
+    }
+    if (!board?.cloudId || joinBusy) return;
+    setJoinBusy(true);
+    try {
+      const result = await joinBoard(board.cloudId, effectiveShareToken);
+      if (result.status === "joined") {
+        toast.success("You joined the room.");
+        window.location.reload();
+        return;
+      }
+      setBoard((current) => current ? { ...current, joinStatus: result.status || "pending" } : current);
+      toast.success("Join request sent. The owner will review it.");
+    } catch (error) {
+      flash(friendlyError(error, "Couldn't join this room."));
+    } finally {
+      setJoinBusy(false);
+    }
+  };
+
+  const handleVisibilityChange = async (visibility) => {
+    if (!isOwner || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const remoteId = await ensureCloudBoard();
+      const updated = await updateBoardVisibility(remoteId, visibility);
+      await updateBoardVisibilityLocal(guestId, localBoardId, updated.visibility || visibility);
+      setBoard((current) => current ? { ...current, cloudId: remoteId, visibility: updated.visibility || visibility } : current);
+      flash(visibility === "public" ? "Anyone with the link can join without approval." : "New members now need your approval.");
+    } catch (error) {
+      flash(friendlyError(error, "Couldn't update room access."));
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -1296,8 +1277,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   // Use cached permission while connecting to avoid briefly exposing an
   // editor to a previously known viewer; the server's live role wins once joined.
-  const readOnly = board?.permission === "invited"
-    || collab.role === "revoked"
+  const readOnly = collab.role === "revoked"
     || (collab.status === "connected" ? collab.role === "viewer" : board?.permission === "viewer");
   const collabLabel = collab.status === "connected"
     ? (collab.pendingUpdates > 0 ? "Syncing" : "Synced")
@@ -1409,19 +1389,14 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     </div>
   );
 
-  const avatarStack = (
-    <div className="room-avatars" aria-hidden="true">
+  const avatarsNode = board.cloudId ? (
+    <div className="room-avatars" aria-label="Room participants">
       {collab.participants.slice(0, 4).map(function (person) {
         return <span key={person.userId} title={person.name} style={{ "--avatar-color": cursorColor(person.userId) }}>{(person.name || "A").slice(0, 1).toUpperCase()}</span>;
       })}
       {collab.participants.length > 4 && <span className="room-avatar-more">+{collab.participants.length - 4}</span>}
     </div>
-  );
-  const avatarsNode = board.cloudId ? (isOwner ? (
-    <button className="room-avatars-trigger" type="button" onClick={() => setMembersOpen(true)} aria-label="View workspace members" title="Manage workspace people">
-      {avatarStack}<small>People</small>
-    </button>
-  ) : avatarStack) : null;
+  ) : null;
 
   const topRightNode = (
     <div className="room-topright">
@@ -1431,7 +1406,13 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         : <span className="room-mode-chip" title="Set by the room owner">{collab.workMode === "commit" ? <GitPullRequest size={13} /> : <Zap size={13} />}{collab.workMode === "commit" ? "Commit mode" : "Live mode"}</span>)}
       {avatarsNode}
       {readOnly && <span className="room-viewonly">View only</span>}
-      {!isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> <span className="rt-label">Sign in</span></button>}
+      {shareToken && readOnly && (
+        <button className="room-join-button" type="button" onClick={handleJoinRoom} disabled={joinBusy}>
+          {joinBusy ? <LoaderCircle size={14} className="spin" /> : <Pencil size={14} />}
+          <span>{joinBusy ? "Joining…" : board.joinStatus === "pending" ? "Check access" : !isAuthenticated ? "Sign in to edit" : board.visibility === "public" ? "Join workspace" : "Request to join"}</span>
+        </button>
+      )}
+      {!shareToken && !isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> <span className="rt-label">Sign in</span></button>}
       {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> <span className="rt-label">Share</span></button>}
       <Menu renderTrigger={renderMoreTrigger} items={menuItems} width={244} label="Room menu" />
     </div>
@@ -1947,22 +1928,6 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   return (
     <main className={`room ${isNotesRoom ? "room-notes" : "room-board"} ${presentationMode ? "is-presenting" : ""}`}>
-      {board.permission === "invited" && (
-        <div className="room-join-card" role="status">
-          <div className="room-join-copy">
-            <strong>{board.joinStatus === "pending" ? "Waiting for approval" : board.joinStatus === "rejected" ? "Your request was declined" : "Join this workspace"}</strong>
-            <span>{board.joinStatus === "pending"
-              ? "Your request is with the owner. Check back here after they approve it."
-              : board.joinStatus === "rejected"
-                ? "You can send another request to the workspace owner."
-                : "This edit link requires owner approval before you can make changes."}</span>
-          </div>
-          {board.joinStatus === "pending"
-            ? <button type="button" className="is-secondary" disabled={joinBusy} onClick={() => void handleCheckWorkspaceAccess()}>{joinBusy ? <LoaderCircle size={15} className="spin" /> : <RefreshCw size={15} />} Check access</button>
-            : <button type="button" disabled={joinBusy} onClick={() => void handleRequestWorkspaceJoin()}>{joinBusy ? <LoaderCircle size={15} className="spin" /> : <Users size={15} />} Join workspace</button>}
-        </div>
-      )}
-      {joinError && <div className="room-join-error" role="alert">{joinError}</div>}
       {isNotesRoom ? (
         <div className="room-stage">
           <RoomNotesPanel
@@ -2033,8 +1998,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
       {collab.error && board.cloudId && <div className="room-banner"><WifiOff size={13} /> {collab.error}</div>}
       {presentationMode && <div className="presentation-exit-bar"><span>Presentation view · {board.title}</span><button type="button" onClick={stopPresentation}>Exit presentation</button></div>}
 
-      {membersOpen && board.cloudId && isOwner && <MembersDrawer boardId={board.cloudId} participants={collab.participants} onClose={() => setMembersOpen(false)} />}
-      {shareOpen && <ShareDialog board={board} link={shareLink} shareToken={effectiveShareToken} onCreate={handleCreateShare} onClose={closeShare} busy={shareBusy} />}
+      {shareOpen && <ShareDialog board={board} link={shareLink} shareToken={effectiveShareToken} onCreate={handleCreateShare} onClose={closeShare} busy={shareBusy} isOwner={isOwner} onVisibilityChange={handleVisibilityChange} />}
       {clearOpen && (
         <Drawer
           size="sm" title="Clear canvas" subtitle={board.title} icon={<Trash2 size={20} strokeWidth={1.8} />} onClose={() => setClearOpen(false)}

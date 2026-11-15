@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
 import User from "../models/User.model.js";
+import BoardShare from "../models/BoardShare.model.js";
+import { hashToken } from "../utils/crypto.js";
 import RefreshSession from "../models/RefreshSession.model.js";
 import { AUTH_COOKIE_NAMES } from "../constants/auth.constants.js";
 import { verifyAccessToken } from "../services/token.service.js";
@@ -45,7 +47,7 @@ function removeSocketFromBoard(io, socket, boardId, message) {
   const access = socket.data.boards?.get(id);
   if (!access) return false;
   clearShareExpiryTimer(socket, id);
-  io.to(roomName(id)).emit("board:presence:leave", { userId: socket.data.userId });
+  io.to(roomName(id)).emit("board:presence:leave", { userId: socket.data.presenceId });
   void socket.leave(roomName(id));
   socket.data.boards.delete(id);
   socket.emit("board:access:revoked", { boardId: id, message });
@@ -111,23 +113,6 @@ export async function revokeBoardShareSockets(io, boardId, shareId) {
   }
 }
 
-export async function revokeAuthSockets(io, { sessionId = null, userId = null } = {}) {
-  if (!io || (!sessionId && !userId)) return;
-  let sockets;
-  try {
-    sockets = await io.fetchSockets();
-  } catch (error) {
-    // Sign-out must still succeed if the optional socket adapter is unavailable.
-    console.warn("[collaboration] Could not enumerate sockets during auth revocation:", error.message);
-    return;
-  }
-  for (const socket of sockets) {
-    const matchesSession = sessionId && socket.data.sessionId === String(sessionId);
-    const matchesUser = userId && socket.data.userId === String(userId);
-    if (matchesSession || matchesUser) socket.disconnect(true);
-  }
-}
-
 export function attachCollaborationSocket(httpServer, env) {
   const io = new Server(httpServer, {
     cors: {
@@ -143,18 +128,39 @@ export function attachCollaborationSocket(httpServer, env) {
   });
 
   io.use(async (socket, next) => {
+    const shareToken = socket.handshake.auth?.shareToken;
     try {
       const token = readCookie(socket.request.headers.cookie, AUTH_COOKIE_NAMES.access);
-      if (!token) return next(new Error("Sign in to collaborate."));
-      const payload = verifyAccessToken(token);
-      if (!payload.sid) return next(new Error("Sign in to collaborate."));
-      const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null }).select("_id").lean();
-      if (!session) return next(new Error("Your sign-in was revoked. Sign in again."));
-      const user = await User.findById(payload.sub).select("name avatarUrl").lean();
-      if (!user) return next(new Error("Account not found."));
-      socket.data.userId = String(user._id);
-      socket.data.sessionId = String(payload.sid);
-      socket.data.profile = { name: user.name, avatarUrl: user.avatarUrl || null };
+      if (token) {
+        try {
+          const payload = verifyAccessToken(token);
+          if (payload.sid) {
+            const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
+            if (session) {
+              const user = await User.findById(payload.sub).select("name avatarUrl").lean();
+              if (user) {
+                socket.data.userId = String(user._id);
+                socket.data.profile = { name: user.name, avatarUrl: user.avatarUrl || null };
+              }
+            }
+          }
+        } catch { /* A stale cookie can still use a valid read-only share link. */ }
+      }
+
+      if (!socket.data.userId) {
+        if (typeof shareToken !== "string" || !/^[A-Za-z0-9_-]{32,100}$/.test(shareToken)) {
+          return next(new Error("Sign in to collaborate."));
+        }
+        const share = await BoardShare.findOne({ tokenHash: hashToken(shareToken) }).select("revokedAt expiresAt").lean();
+        if (!share || share.revokedAt || (share.expiresAt && share.expiresAt <= new Date())) {
+          return next(new Error("This share link is expired or has been revoked."));
+        }
+        socket.data.userId = null;
+        socket.data.profile = { name: "Guest viewer", avatarUrl: null };
+        socket.data.anonymousViewer = true;
+      }
+
+      socket.data.presenceId = socket.data.userId || socket.id;
       socket.data.boards = new Map();
       socket.data.shareExpiryTimers = new Map();
       return next();
@@ -167,11 +173,13 @@ export function attachCollaborationSocket(httpServer, env) {
     socket.on("board:join", async (payload = {}, acknowledge = () => {}) => {
       try {
         const boardId = String(payload.boardId || "");
-        const { board, role, share } = await getBoardAccess({
+        const access = await getBoardAccess({
           boardId,
           userId: socket.data.userId,
           shareToken: payload.shareToken || null
         });
+        const { board, share } = access;
+        const role = socket.data.anonymousViewer ? "viewer" : access.role;
         const name = roomName(board._id);
         const boardKey = String(board._id);
 
@@ -179,7 +187,7 @@ export function attachCollaborationSocket(httpServer, env) {
           if (previousBoardId === boardKey) continue;
           clearShareExpiryTimer(socket, previousBoardId);
           socket.to(roomName(previousBoardId)).emit("board:presence:leave", {
-            userId: socket.data.userId
+            userId: socket.data.presenceId
           });
           socket.leave(roomName(previousBoardId));
           socket.data.boards.delete(previousBoardId);
@@ -199,7 +207,7 @@ export function attachCollaborationSocket(httpServer, env) {
         const snapshot = await getDocumentSnapshot(board._id);
         const sockets = await io.in(name).fetchSockets();
         const participants = sockets.map((entry) => ({
-          userId: entry.data.userId,
+          userId: entry.data.presenceId || entry.data.userId || entry.id,
           name: entry.data.profile?.name || "Teammate",
           avatarUrl: entry.data.profile?.avatarUrl || null
         }));
@@ -213,7 +221,7 @@ export function attachCollaborationSocket(httpServer, env) {
           participants
         });
         socket.to(name).emit("board:presence:join", {
-          userId: socket.data.userId,
+          userId: socket.data.presenceId,
           ...socket.data.profile
         });
       } catch (error) {
@@ -328,7 +336,7 @@ export function attachCollaborationSocket(httpServer, env) {
       const y = Number(payload.y);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       socket.to(roomName(boardId)).volatile.emit("board:presence:pointer", {
-        userId: socket.data.userId,
+        userId: socket.data.presenceId,
         name: socket.data.profile?.name || "Teammate",
         avatarUrl: socket.data.profile?.avatarUrl || null,
         x, y,
@@ -340,7 +348,7 @@ export function attachCollaborationSocket(httpServer, env) {
       for (const timer of socket.data.shareExpiryTimers.values()) clearTimeout(timer);
       socket.data.shareExpiryTimers.clear();
       for (const boardId of socket.data.boards.keys()) {
-        socket.to(roomName(boardId)).emit("board:presence:leave", { userId: socket.data.userId });
+        socket.to(roomName(boardId)).emit("board:presence:leave", { userId: socket.data.presenceId });
       }
     });
   });

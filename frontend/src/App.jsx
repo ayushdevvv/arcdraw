@@ -55,12 +55,9 @@ export default function App() {
   };
 
   let content;
-  if (shareMatch && !isAuthenticated) {
-    sessionStorage.setItem(POST_AUTH_ROUTE_KEY, route);
-    content = <AuthPage route="/auth/login" navigate={navigate} redirectTo={route} allowGuest={false} onGuest={openWorkspace} />;
-  } else if (shareMatch) {
+  if (shareMatch) {
     content = session ? (
-      <RoomEditor guestId={session.guestId} shareToken={decodeURIComponent(shareMatch[1])} onBack={backToWorkspace} onAccountRequired={(action) => requireAccountForAction(isAuthenticated, action)} user={user} isAuthenticated={isAuthenticated} />
+      <RoomEditor guestId={session.guestId} shareToken={decodeURIComponent(shareMatch[1])} onBack={backToWorkspace} onAccountRequired={(action) => requireAccountForAction(isAuthenticated, action)} onSignIn={() => openAuth(route)} user={user} isAuthenticated={isAuthenticated} />
     ) : <div className="editor-loading">Opening shared room…</div>;
   } else if (route.startsWith("/auth/")) {
     content = <AuthPage route={route} navigate={navigate} onGuest={openWorkspace} redirectTo={sessionStorage.getItem(POST_AUTH_ROUTE_KEY) || "/workspace"} />;
@@ -71,6 +68,7 @@ export default function App() {
         boardId={decodeURIComponent(boardMatch[1])}
         onBack={backToWorkspace}
         onAccountRequired={(action) => { if (!isAuthenticated) openAuth(route); }}
+        onSignIn={() => openAuth(route)}
         user={user}
         isAuthenticated={isAuthenticated}
       />
