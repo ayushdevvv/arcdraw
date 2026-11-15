@@ -27,6 +27,7 @@ router.post("/login", authRateLimiter, authController.login);
 router.post("/logout", authController.logout);
 router.post("/refresh", authRateLimiter, authController.refresh);
 router.get("/me", requireAuth, authController.me);
+router.get("/socket-ticket", requireAuth, authController.createSocketTicket);
 router.post("/logout-all", requireAuth, authController.logoutAll);
 router.post("/forgot-password", sensitiveAuthRateLimiter, authController.forgotPassword);
 router.post("/reset-password", sensitiveAuthRateLimiter, authController.resetPassword);

@@ -1,4 +1,21 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1").replace(/\/$/, "");
+const isProductionBuild = Boolean(import.meta.env.PROD);
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+// In production the frontend proxies /api/v1 to Render. This keeps auth cookies
+// first-party on mobile browsers that block cross-site cookies (notably Chrome).
+const API_BASE_URL = (isProductionBuild
+  ? `${window.location.origin}/api/v1`
+  : configuredApiBase
+).replace(/\/$/, "");
+function resolveSocketUrl() {
+  if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
+  // Reuse the previously configured API host for realtime when one exists.
+  // The REST API itself still goes through the same-origin Vercel proxy.
+  if (isProductionBuild && import.meta.env.VITE_API_BASE_URL) {
+    try { return new URL(import.meta.env.VITE_API_BASE_URL, window.location.origin).origin; } catch { /* use default below */ }
+  }
+  return isProductionBuild ? "https://arcdraw.onrender.com" : new URL(API_BASE_URL).origin;
+}
+const SOCKET_URL = resolveSocketUrl().replace(/\/$/, "");
 const REQUEST_TIMEOUT_MS = 45000;
 
 function makeError(message, extra) {
@@ -49,4 +66,4 @@ export async function apiRequest(path, options = {}) {
   return payload;
 }
 
-export { API_BASE_URL };
+export { API_BASE_URL, SOCKET_URL };

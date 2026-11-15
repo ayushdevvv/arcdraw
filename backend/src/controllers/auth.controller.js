@@ -13,6 +13,7 @@ import {
 } from "../utils/cookies.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { safeStringEqual } from "../utils/crypto.js";
+import { createSocketToken } from "../services/token.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
   emailOnlySchema,
@@ -100,6 +101,11 @@ export const refresh = asyncHandler(async (req, res) => {
 export const me = asyncHandler(async (req, res) => {
   const user = await authService.getUserById(req.auth.userId);
   return res.status(200).json({ success: true, user });
+});
+
+export const createSocketTicket = asyncHandler(async (req, res) => {
+  const socketToken = createSocketToken(req.auth.userId, req.auth.sessionId);
+  return res.status(200).json({ success: true, socketToken, expiresInSeconds: 86400 });
 });
 
 export const logoutAll = asyncHandler(async (req, res) => {

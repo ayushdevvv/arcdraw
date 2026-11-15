@@ -25,7 +25,7 @@ Configure these server-only variables in `backend/.env` and in Render:
 AI_API_KEY=your_groq_api_key
 AI_API_BASE_URL=https://api.groq.com/openai/v1
 AI_MODEL=openai/gpt-oss-120b
-AI_REQUEST_TIMEOUT_MS=110000
+AI_REQUEST_TIMEOUT_MS=120000
 ```
 
 Never use a `VITE_` prefix for the Groq key. The key must never reach the browser. You do not need Tavily or a separate image-generation API for the current native-object generator. The agent creates shapes, text, connectors and sticky notes; generated photographic assets are not included in this release.
@@ -40,7 +40,7 @@ Never use a `VITE_` prefix for the Groq key. The key must never reach the browse
 - For create/add/build instructions, the client applies a generated design as a new grouped composition. It preserves existing canvas objects and places a new composition to the right of existing content.
 - When the model identifies repeated patterns, it declares a master group, matching instance groups and optional variants. On approval ArcDraw saves these into the room Design Studio library and tags the on-canvas copies with the existing instance metadata, so supported default instances can receive master updates. Preview is a lightweight layout representation, not a pixel-perfect raster render of Excalidraw. All applied objects remain editable.
 - Selected-object editing currently supports copy, fill/stroke/text color, font size, position, dimensions, opacity and corner-rounding updates on selected supported Excalidraw objects. It does not yet expose a full Figma property inspector or auto-layout constraint engine.
-- The endpoint requires an authenticated account and uses the existing per-IP agent rate limit.
+- The endpoint requires an authenticated account and uses the existing per-IP agent rate limit. Provider generation is allowed up to 120 seconds; the browser allows a short response grace period so the final stream event can arrive.
 
 ## Manual test
 

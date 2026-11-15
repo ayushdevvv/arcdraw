@@ -26,8 +26,11 @@ signed-out visitor with no valid refresh cookie; the app should continue as a
 guest. It is an authentication issue only when a user expects to remain signed
 in.
 
-For the current split deployment (`arcdraw.vercel.app` calling
-`arcdraw.onrender.com`), confirm the Render service has:
+For production, REST requests use the same-origin Vercel proxy:
+`https://arcdraw.vercel.app/api/v1/*` is rewritten to
+`https://arcdraw.onrender.com/api/v1/*`. This keeps the session cookie first-party
+on the app hostname instead of depending on third-party cookie support in
+mobile Chrome. Confirm Render has:
 
 ```env
 COOKIE_SAME_SITE=none
@@ -36,15 +39,13 @@ CORS_ORIGINS=https://arcdraw.vercel.app
 CLIENT_URL=https://arcdraw.vercel.app
 ```
 
-The client must use `VITE_API_BASE_URL=https://arcdraw.onrender.com/api/v1`.
-The API already sends credentialed CORS responses and the frontend already
-uses `credentials: "include"`. Do not set a shared `COOKIE_DOMAIN` across the
-Vercel and Render hostnames. Check the browser's Application/Storage cookie
-panel and the login response's `Set-Cookie` headers for blocked-cookie reasons.
-Browsers and privacy extensions can block third-party cookies even when
-`SameSite=None; Secure` is configured. A more robust production arrangement
-is to put the web app and API on subdomains of the same custom domain, such as
-`app.example.com` and `api.example.com`.
+Remove the old `VITE_API_BASE_URL` override from Vercel so REST calls use the
+same-origin proxy. The app uses a session-bound Socket.IO ticket for realtime
+connections to Render, so live collaboration does not depend on third-party
+cookies. Do not set `COOKIE_DOMAIN` to the Render hostname. After deploying the
+proxy, sign in again once so the new first-party cookies are issued on the app
+hostname. For Google/GitHub OAuth, use the Vercel callback URLs described in
+`google-oauth.md` and `github-oauth.md`.
 
 ## Socket.IO connection failures
 

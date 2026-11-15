@@ -130,10 +130,17 @@ export function attachCollaborationSocket(httpServer, env) {
   io.use(async (socket, next) => {
     const shareToken = socket.handshake.auth?.shareToken;
     try {
-      const token = readCookie(socket.request.headers.cookie, AUTH_COOKIE_NAMES.access);
+      const suppliedSocketToken = socket.handshake.auth?.socketToken;
+      const cookieToken = readCookie(socket.request.headers.cookie, AUTH_COOKIE_NAMES.access);
+      const token = typeof suppliedSocketToken === "string" && suppliedSocketToken
+        ? suppliedSocketToken
+        : cookieToken;
       if (token) {
         try {
           const payload = verifyAccessToken(token);
+          // A browser-provided socket token must have the dedicated scope. Cookie
+          // auth remains supported for older clients and local development.
+          if (suppliedSocketToken && payload.scope !== "socket") throw new Error("Invalid socket credential scope");
           if (payload.sid) {
             const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
             if (session) {
@@ -144,7 +151,7 @@ export function attachCollaborationSocket(httpServer, env) {
               }
             }
           }
-        } catch { /* A stale cookie can still use a valid read-only share link. */ }
+        } catch { /* A stale credential can still use a valid read-only share link. */ }
       }
 
       if (!socket.data.userId) {

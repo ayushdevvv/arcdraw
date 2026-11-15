@@ -9,7 +9,7 @@ function createStreamError(message, extra = {}) {
 export async function generateRoomDesign(prompt, roomContext, { onProgress, signal } = {}) {
   const controller = new AbortController();
   let timedOut = false;
-  const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 180000);
+  const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 125000);
   const abortFromCaller = () => controller.abort();
   signal?.addEventListener("abort", abortFromCaller, { once: true });
   try {

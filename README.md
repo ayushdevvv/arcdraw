@@ -162,6 +162,11 @@ If the owner switches back to live editing, editors who still hold an unsent dra
 
 ## Going to production
 
-1. Backend on Render: use `backend/render.yaml`. Set MONGODB_URI, JWT_ACCESS_SECRET (32+ characters), CLIENT_URL, CORS_ORIGINS and API_PUBLIC_URL to your deployed addresses. The server refuses to start in production with localhost addresses or without COOKIE_SECURE.
-2. Frontend on Vercel: set `VITE_API_BASE_URL` to `https://your-api.onrender.com/api/v1`. `frontend/vercel.json` adds security headers and caching.
+1. Backend on Render: use `backend/render.yaml`. Set MONGODB_URI, JWT_ACCESS_SECRET (32+ characters), CLIENT_URL, CORS_ORIGINS and API_PUBLIC_URL to your deployed addresses. `CLIENT_URL` and `CORS_ORIGINS` must include the exact Vercel app origin. The server refuses to start in production with localhost addresses or without COOKIE_SECURE.
+2. Frontend on Vercel: `frontend/vercel.json` proxies `/api/v1/*` to `https://arcdraw.onrender.com`, keeping account cookies first-party on the app domain for mobile Chrome. Production builds use this same-origin route automatically; remove any old `VITE_API_BASE_URL` override from Vercel. Set `VITE_SOCKET_URL=https://arcdraw.onrender.com` only if your backend uses a different host (the default is already configured).
 3. Rooms sync up to about 7 MB. The editor warns before that limit is reached. Large image assets are currently embedded in room snapshots; use modest images until object storage and backup recovery are implemented.
+
+
+### Mobile browser authentication and OAuth callbacks
+
+Production REST calls are routed through the frontend origin so Chrome does not need third-party cookies for the Render API. For Google and GitHub OAuth, the backend derives callback URLs from `CLIENT_URL` when `GOOGLE_CALLBACK_URL` and `GITHUB_CALLBACK_URL` are unset. Add `https://<your-vercel-domain>/api/v1/auth/google/callback` and `https://<your-vercel-domain>/api/v1/auth/github/callback` as the exact callback URLs in the Google and GitHub OAuth applications. Set explicit Render callback variables only when you need to override those defaults. Email/password login uses the proxy automatically.

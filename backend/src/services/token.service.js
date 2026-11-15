@@ -21,6 +21,20 @@ export function verifyAccessToken(token) {
   });
 }
 
+// Time-limited, session-bound credential for Socket.IO. The browser never needs
+// access to the HTTP-only account cookies and does not persist this token.
+export function createSocketToken(userId, sessionId) {
+  return jwt.sign(
+    { sub: userId.toString(), sid: sessionId ? sessionId.toString() : undefined, scope: "socket" },
+    env.JWT_ACCESS_SECRET,
+    {
+      expiresIn: "24h",
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE
+    }
+  );
+}
+
 export function createRefreshToken() {
   const token = createOpaqueToken(48);
   return { token, tokenHash: hashToken(token) };

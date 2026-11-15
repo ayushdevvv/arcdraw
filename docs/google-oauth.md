@@ -11,7 +11,7 @@ ArcDraw already contains the server-side Google OAuth 2.0 authorization-code flo
 
    Local: `http://localhost:5000/api/v1/auth/google/callback`
 
-   Production: `https://arcdraw.onrender.com/api/v1/auth/google/callback`
+   Production: `https://arcdraw.vercel.app/api/v1/auth/google/callback`
 
 5. Copy the Client ID and Client Secret into the backend environment. Do not put either secret in a `VITE_` frontend variable.
 
@@ -20,12 +20,12 @@ ArcDraw already contains the server-side Google OAuth 2.0 authorization-code flo
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_CALLBACK_URL=https://arcdraw.onrender.com/api/v1/auth/google/callback
+GOOGLE_CALLBACK_URL=https://arcdraw.vercel.app/api/v1/auth/google/callback
 CLIENT_URL=https://arcdraw.vercel.app
 CORS_ORIGINS=https://arcdraw.vercel.app
 ```
 
-For local development, change `GOOGLE_CALLBACK_URL` to the localhost callback. For production, register and use the HTTPS production callback. Google requires the redirect URI to exactly match a registered URI.
+For local development, change `GOOGLE_CALLBACK_URL` to the localhost callback. For production, register and use the HTTPS production callback. Google requires the redirect URI to exactly match a registered URI. The frontend-domain callback is reverse-proxied to Render so the session cookie is stored first-party on the app domain.
 
 ## Verify
 

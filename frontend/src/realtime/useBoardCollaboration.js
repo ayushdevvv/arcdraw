@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { API_BASE_URL } from "../services/apiClient.js";
+import { SOCKET_URL } from "../services/apiClient.js";
+import { getSocketTicket } from "../services/authService.js";
 import {
   Y, hasYjsScene, writeSceneToYjs, readSceneFromYjs,
   readNotesFromYjs, writeNotesToYjs, updateNoteContentInYjs,
@@ -12,7 +13,6 @@ import {
   encodeUpdateBase64, decodeUpdateBase64, LOCAL_SCENE_ORIGIN, REMOTE_SCENE_ORIGIN
 } from "./yjsScene.js";
 
-const API_ORIGIN = new URL(API_BASE_URL).origin;
 
 function draftFlagKey(userId, roomId) {
   return `arcdraw:draft:${userId}:${roomId}`;
@@ -40,7 +40,7 @@ function writeDraftFlag(userId, roomId, on) {
  */
 export function useBoardCollaboration({
   boardId, localUserId, shareToken = null, roleHint = null, initialWorkMode = "live",
-  initialScene, initialNotes = [], initialProjectItems = [], initialDesignStudio = {}, enabled = true,
+  initialScene, initialNotes = [], initialProjectItems = [], initialDesignStudio = {}, enabled = true, isAuthenticated = false,
   onRemoteScene, onRemoteNotes, onRemoteProjectItems, onRemoteDesignStudio, onRemoteDiscussion, onModeChange, onProposalEvent
 }) {
   const docRef = useRef(null);
@@ -263,9 +263,25 @@ export function useBoardCollaboration({
       // Hydrate the panel before attempting the network connection.
       applyRemoteDiscussion();
 
-      socket = io(API_ORIGIN, {
-        withCredentials: true,
-        auth: shareToken ? { shareToken } : {},
+      let socketToken = null;
+      if (isAuthenticated) {
+        try {
+          const ticket = await getSocketTicket();
+          socketToken = ticket.socketToken || null;
+        } catch (ticketError) {
+          if (disposed) return;
+          setStatus("error");
+          setError(ticketError?.message || "Your account session could not be verified. Please sign in again.");
+          return;
+        }
+      }
+      if (disposed) return;
+
+      socket = io(SOCKET_URL, {
+        // Account connections use a signed, session-bound socket ticket;
+        // shared viewers use the share token. No third-party cookies required.
+        withCredentials: false,
+        auth: { ...(shareToken ? { shareToken } : {}), ...(socketToken ? { socketToken } : {}) },
         // Start with polling and upgrade to WebSocket after the session is
         // established. This avoids failing the initial room connection on
         // dev proxies, restrictive networks, and hosts without WS upgrades.
@@ -610,7 +626,7 @@ export function useBoardCollaboration({
       doc?.destroy();
       docRef.current = null;
     };
-  }, [boardId, localUserId, shareToken, enabled, resetNonce]);
+  }, [boardId, localUserId, shareToken, enabled, isAuthenticated, resetNonce]);
 
   const publishScene = useCallback((scene) => {
     const doc = docRef.current;

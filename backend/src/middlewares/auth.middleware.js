@@ -14,6 +14,7 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
 
   try {
     const payload = verifyAccessToken(token);
+    if (payload.scope === "socket") throw new Error("Socket credential cannot access HTTP routes");
     if (!payload.sid) throw new Error("Session reference missing");
     const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
     if (!session) throw new Error("Session revoked");
@@ -41,6 +42,7 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
 
   try {
     const payload = verifyAccessToken(token);
+    if (payload.scope === "socket") return next();
     if (!payload.sid) return next();
     const session = await RefreshSession.findOne({ _id: payload.sid, user: payload.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).select("_id").lean();
     if (session) req.auth = { userId: payload.sub, sessionId: payload.sid };

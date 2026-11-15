@@ -8,17 +8,17 @@ ArcDraw already contains the server-side GitHub OAuth authorization-code flow wi
 2. Choose **New OAuth App**.
 3. Application name: `ArcDraw` (or your preferred public app name).
 4. Homepage URL: `https://arcdraw.vercel.app`.
-5. Authorization callback URL: `https://arcdraw.onrender.com/api/v1/auth/github/callback`.
+5. Authorization callback URL: `https://arcdraw.vercel.app/api/v1/auth/github/callback`.
 6. Register the app, generate a client secret and copy the Client ID and secret.
 
-For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access.
+For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access. The frontend-domain callback is reverse-proxied to Render so the session cookie is stored first-party on the app domain.
 
 ## Backend environment
 
 ```env
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
-GITHUB_CALLBACK_URL=https://arcdraw.onrender.com/api/v1/auth/github/callback
+GITHUB_CALLBACK_URL=https://arcdraw.vercel.app/api/v1/auth/github/callback
 CLIENT_URL=https://arcdraw.vercel.app
 CORS_ORIGINS=https://arcdraw.vercel.app
 ```

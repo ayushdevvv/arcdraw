@@ -39,10 +39,10 @@ const envSchema = z.object({
   COOKIE_DOMAIN: optionalString,
   GOOGLE_CLIENT_ID: optionalString,
   GOOGLE_CLIENT_SECRET: optionalString,
-  GOOGLE_CALLBACK_URL: z.string().url().default("http://localhost:5000/api/v1/auth/google/callback"),
+  GOOGLE_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   GITHUB_CLIENT_ID: optionalString,
   GITHUB_CLIENT_SECRET: optionalString,
-  GITHUB_CALLBACK_URL: z.string().url().default("http://localhost:5000/api/v1/auth/github/callback"),
+  GITHUB_CALLBACK_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   OTP_HASH_SECRET: optionalSecret,
   BREVO_API_KEY: optionalString,
   MAIL_FROM_NAME: z.string().min(1).default("ArcDraw"),
@@ -52,7 +52,7 @@ const envSchema = z.object({
   AI_API_KEY: optionalString,
   AI_API_BASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   AI_MODEL: z.string().default("openai/gpt-oss-120b"),
-  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(10000).max(120000).default(110000)
+  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(10000).max(120000).default(120000)
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -65,6 +65,7 @@ if (!parsed.success) {
 }
 
 const values = parsed.data;
+const clientOrigin = new URL(values.CLIENT_URL).origin;
 
 if (values.COOKIE_SAME_SITE === "none" && !values.COOKIE_SECURE) {
   console.error("COOKIE_SECURE must be true when COOKIE_SAME_SITE=none.");
@@ -86,6 +87,9 @@ if (values.NODE_ENV === "production") {
 
 export const env = Object.freeze({
   ...values,
+  // OAuth callback state cookies are set through the same-origin frontend proxy.
+  GOOGLE_CALLBACK_URL: values.GOOGLE_CALLBACK_URL || `${clientOrigin}/api/v1/auth/google/callback`,
+  GITHUB_CALLBACK_URL: values.GITHUB_CALLBACK_URL || `${clientOrigin}/api/v1/auth/github/callback`,
   CORS_ORIGINS: values.CORS_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),
   GOOGLE_OAUTH_ENABLED: Boolean(values.GOOGLE_CLIENT_ID && values.GOOGLE_CLIENT_SECRET),
   GITHUB_OAUTH_ENABLED: Boolean(values.GITHUB_CLIENT_ID && values.GITHUB_CLIENT_SECRET),

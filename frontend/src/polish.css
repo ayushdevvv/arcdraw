@@ -300,3 +300,78 @@ html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #f
   .room-join-button span { display: none; }
   .room-topright { gap: 6px; }
 }
+
+
+/* Compact, bounded room header on narrow phones (Share + menu always stay visible). */
+@media (max-width: 599px) {
+  .room-title {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    max-width: calc(100vw - 160px);
+    height: 44px;
+  }
+  .room-title .room-btn { width: 40px; height: 42px; }
+  .room-title-button { padding-inline: 10px; }
+  .room-title-button strong { max-width: 100%; font-size: 13px; }
+  .room-topright-phone {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    max-width: calc(100vw - 112px);
+    overflow: visible;
+  }
+  .room-topright-phone .room-topright {
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .room-topright .room-sync,
+  .room-topright .room-mode-chip,
+  .room-topright .room-avatars,
+  .room-topright .room-viewonly { display: none !important; }
+  .room-topright .room-share,
+  .room-topright .room-signin-tab,
+  .room-topright .room-join-button,
+  .room-topright .room-btn {
+    flex: 0 0 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 599px) {
+  .room-notes .room-topright {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    display: flex;
+    max-width: calc(100vw - 112px);
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .room-notes .room-topright .room-sync,
+  .room-notes .room-topright .room-mode-chip,
+  .room-notes .room-topright .room-avatars,
+  .room-notes .room-topright .room-viewonly { display: none !important; }
+  .room-notes .room-topright .room-share,
+  .room-notes .room-topright .room-signin-tab,
+  .room-notes .room-topright .room-join-button,
+  .room-notes .room-topright .room-btn {
+    flex: 0 0 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+}

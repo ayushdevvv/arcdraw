@@ -282,6 +282,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
     initialNotes: notes,
     initialProjectItems: projectItems,
     initialDesignStudio: designStudio,
+    isAuthenticated,
     enabled: Boolean(cloudBoardId && ((isAuthenticated && user?.id) || (shareToken && !isAuthenticated))),
     onRemoteScene: applyRemoteScene,
     onRemoteNotes: applyRemoteNotes,
