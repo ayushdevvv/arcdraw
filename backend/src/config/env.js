@@ -87,7 +87,7 @@ if (values.NODE_ENV === "production") {
 
 export const env = Object.freeze({
   ...values,
-  // OAuth callback state cookies are set through the same-origin frontend proxy.
+  // Keep OAuth callbacks on the app origin so auth session cookies remain first-party.
   GOOGLE_CALLBACK_URL: values.GOOGLE_CALLBACK_URL || `${clientOrigin}/api/v1/auth/google/callback`,
   GITHUB_CALLBACK_URL: values.GITHUB_CALLBACK_URL || `${clientOrigin}/api/v1/auth/github/callback`,
   CORS_ORIGINS: values.CORS_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),

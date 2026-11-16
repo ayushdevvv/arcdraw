@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { AUTH_COOKIE_NAMES, OAUTH_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
+import { AUTH_COOKIE_NAMES } from "../constants/auth.constants.js";
 import * as authService from "../services/auth.service.js";
 import { createGoogleAuthorization, resolveGoogleUser } from "../services/google-oauth.service.js";
 import { createGitHubAuthorization, resolveGitHubUser } from "../services/github-oauth.service.js";
@@ -7,14 +7,16 @@ import {
   clearAuthCookies,
   clearGoogleOAuthCookies,
   clearGitHubOAuthCookies,
+  getGoogleOAuthCookies,
+  getGitHubOAuthCookies,
   setAuthCookies,
-  setGoogleOAuthCookies,
-  setGitHubOAuthCookies
 } from "../utils/cookies.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { safeStringEqual } from "../utils/crypto.js";
 import { createSocketToken } from "../services/token.service.js";
 import { ApiError } from "../utils/ApiError.js";
+import { sendLoginNotificationEmail } from "../services/mail.service.js";
+import { consumeOAuthAttempt, saveOAuthAttempt } from "../services/oauth-attempt.service.js";
 import {
   emailOnlySchema,
   loginSchema,
@@ -27,6 +29,18 @@ const sessionMetadata = (req) => ({
   userAgent: req.get("user-agent"),
   ipAddress: req.ip
 });
+
+async function sendLoginNotice(user, provider) {
+  try {
+    const result = await sendLoginNotificationEmail(user, { provider });
+    if (!result.sent) console.warn(`[auth:email] Login notice was not sent for ${provider}; configure Brevo to enable auth emails.`);
+  } catch (error) {
+    // A mail provider outage must never turn a valid sign-in into a failed sign-in.
+    console.error(`[auth:email] Could not send ${provider} login notice:`, error?.message || error);
+  }
+}
+
+const authFailureUrl = (provider) => `${env.CLIENT_URL}/?authError=${encodeURIComponent(provider)}`;
 
 const sendSession = (res, session, statusCode = 200) => {
   setAuthCookies(res, session);
@@ -54,6 +68,7 @@ export const verifyEmailOtp = asyncHandler(async (req, res) => {
   const input = verifyEmailOtpSchema.parse(req.body);
   const { user, session } = await authService.verifyEmailOtp(input, sessionMetadata(req));
   if (session) {
+    void sendLoginNotice(session.user, "email verification");
     setAuthCookies(res, session);
     return res.status(200).json({
       success: true,
@@ -84,6 +99,7 @@ export const resendVerification = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const input = loginSchema.parse(req.body);
   const session = await authService.loginWithPassword(input, sessionMetadata(req));
+  void sendLoginNotice(session.user, "email");
   return sendSession(res, session);
 });
 
@@ -133,50 +149,75 @@ export const resetPassword = asyncHandler(async (req, res) => {
 });
 
 export const googleStart = asyncHandler(async (req, res) => {
-  const authorization = await createGoogleAuthorization();
-  setGoogleOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
-  return res.redirect(302, authorization.url);
-});
-
-export const googleCallback = asyncHandler(async (req, res) => {
-  const storedState = req.cookies?.[AUTH_COOKIE_NAMES.googleState];
-  const storedNonce = req.cookies?.[AUTH_COOKIE_NAMES.googleNonce];
-  const storedCodeVerifier = req.cookies?.[AUTH_COOKIE_NAMES.googleCodeVerifier];
-  const { state, code, error } = req.query;
-
-  clearGoogleOAuthCookies(res);
-  if (error) return res.redirect(302, `${env.CLIENT_URL}/?authError=google`);
-
-  if (!safeStringEqual(String(state || ""), storedState || "") || !storedNonce || !storedCodeVerifier || typeof code !== "string") {
-    throw new ApiError(400, "Google sign-in could not be validated. Please try again.", "GOOGLE_STATE_INVALID");
+  try {
+    const authorization = await createGoogleAuthorization();
+    await saveOAuthAttempt({ provider: "google", ...authorization });
+    return res.redirect(302, authorization.url);
+  } catch (error) {
+    console.warn("[auth:oauth] Google authorization could not start:", error?.code || error?.message || error);
+    return res.redirect(302, authFailureUrl("google"));
   }
-
-  const user = await resolveGoogleUser(code, storedNonce, storedCodeVerifier);
-  const session = await authService.createSessionForUser(user, sessionMetadata(req));
-  setAuthCookies(res, session);
-  return res.redirect(302, `${env.CLIENT_URL}/?signedIn=google`);
 });
+
+export async function googleCallback(req, res) {
+  const state = typeof req.query?.state === "string" ? req.query.state : "";
+  clearGoogleOAuthCookies(res, state);
+
+  try {
+    if (req.query?.error) {
+      await consumeOAuthAttempt("google", state);
+      return res.redirect(302, authFailureUrl("google"));
+    }
+    const attempt = await consumeOAuthAttempt("google", state) || getGoogleOAuthCookies(req);
+    const code = req.query?.code;
+    if (!attempt || (attempt.state && !safeStringEqual(state, attempt.state)) || !attempt.nonce || !attempt.codeVerifier || typeof code !== "string") {
+      throw new ApiError(400, "Google sign-in state validation failed", "GOOGLE_STATE_INVALID");
+    }
+
+    const user = await resolveGoogleUser(code, attempt.nonce, attempt.codeVerifier);
+    const session = await authService.createSessionForUser(user, sessionMetadata(req));
+    void sendLoginNotice(session.user, "Google");
+    setAuthCookies(res, session);
+    return res.redirect(302, `${env.CLIENT_URL}/?signedIn=google`);
+  } catch (error) {
+    console.warn("[auth:oauth] Google callback did not complete:", error?.code || error?.message || error);
+    return res.redirect(302, authFailureUrl("google"));
+  }
+}
 
 export const githubStart = asyncHandler(async (req, res) => {
-  const authorization = createGitHubAuthorization();
-  setGitHubOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
-  return res.redirect(302, authorization.url);
-});
-
-export const githubCallback = asyncHandler(async (req, res) => {
-  const storedState = req.cookies?.[AUTH_COOKIE_NAMES.githubState];
-  const storedCodeVerifier = req.cookies?.[AUTH_COOKIE_NAMES.githubCodeVerifier];
-  const { state, code, error } = req.query;
-
-  clearGitHubOAuthCookies(res);
-  if (error) return res.redirect(302, `${env.CLIENT_URL}/?authError=github`);
-
-  if (!safeStringEqual(String(state || ""), storedState || "") || !storedCodeVerifier || typeof code !== "string") {
-    throw new ApiError(400, "GitHub sign-in could not be validated. Please try again.", "GITHUB_STATE_INVALID");
+  try {
+    const authorization = createGitHubAuthorization();
+    await saveOAuthAttempt({ provider: "github", ...authorization });
+    return res.redirect(302, authorization.url);
+  } catch (error) {
+    console.warn("[auth:oauth] GitHub authorization could not start:", error?.code || error?.message || error);
+    return res.redirect(302, authFailureUrl("github"));
   }
-
-  const user = await resolveGitHubUser(code, storedCodeVerifier);
-  const session = await authService.createSessionForUser(user, sessionMetadata(req));
-  setAuthCookies(res, session);
-  return res.redirect(302, `${env.CLIENT_URL}/?signedIn=github`);
 });
+
+export async function githubCallback(req, res) {
+  const state = typeof req.query?.state === "string" ? req.query.state : "";
+  clearGitHubOAuthCookies(res, state);
+
+  try {
+    if (req.query?.error) {
+      await consumeOAuthAttempt("github", state);
+      return res.redirect(302, authFailureUrl("github"));
+    }
+    const attempt = await consumeOAuthAttempt("github", state) || getGitHubOAuthCookies(req);
+    const code = req.query?.code;
+    if (!attempt || (attempt.state && !safeStringEqual(state, attempt.state)) || !attempt.codeVerifier || typeof code !== "string") {
+      throw new ApiError(400, "GitHub sign-in state validation failed", "GITHUB_STATE_INVALID");
+    }
+
+    const user = await resolveGitHubUser(code, attempt.codeVerifier);
+    const session = await authService.createSessionForUser(user, sessionMetadata(req));
+    void sendLoginNotice(session.user, "GitHub");
+    setAuthCookies(res, session);
+    return res.redirect(302, `${env.CLIENT_URL}/?signedIn=github`);
+  } catch (error) {
+    console.warn("[auth:oauth] GitHub callback did not complete:", error?.code || error?.message || error);
+    return res.redirect(302, authFailureUrl("github"));
+  }
+}

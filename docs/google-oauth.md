@@ -25,7 +25,7 @@ CLIENT_URL=https://arcdraw.vercel.app
 CORS_ORIGINS=https://arcdraw.vercel.app
 ```
 
-For local development, change `GOOGLE_CALLBACK_URL` to the localhost callback. For production, register and use the HTTPS production callback. Google requires the redirect URI to exactly match a registered URI. The frontend-domain callback is reverse-proxied to Render so the session cookie is stored first-party on the app domain.
+For local development, change `GOOGLE_CALLBACK_URL` to the localhost callback. For production, register and use the HTTPS production callback. Google requires the redirect URI to exactly match a registered URI. The OAuth state, nonce and PKCE verifier are stored server-side for ten minutes and consumed once by the callback. Keep the callback on the frontend domain and reverse-proxied to Render so the resulting session cookie is stored first-party on the app domain.
 
 ## Verify
 

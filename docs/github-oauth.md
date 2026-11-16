@@ -11,7 +11,7 @@ ArcDraw already contains the server-side GitHub OAuth authorization-code flow wi
 5. Authorization callback URL: `https://arcdraw.vercel.app/api/v1/auth/github/callback`.
 6. Register the app, generate a client secret and copy the Client ID and secret.
 
-For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access. The frontend-domain callback is reverse-proxied to Render so the session cookie is stored first-party on the app domain.
+For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access. The OAuth state, nonce and PKCE verifier are stored server-side for ten minutes and consumed once by the callback. Keep the callback on the frontend domain and reverse-proxied to Render so the resulting session cookie is stored first-party on the app domain.
 
 ## Backend environment
 

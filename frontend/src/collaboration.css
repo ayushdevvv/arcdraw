@@ -159,7 +159,7 @@
 .room-draftbar button { height: 28px; padding: 0 12px; border: 1px solid #f5f5f5; border-radius: 10px; background: #f5f5f5; color: #0a0a0a; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .room-draftbar button.is-ghost { background: transparent; color: #f5f5f5; border-color: #555; }
 .room-draftbar button:disabled { opacity: .45; cursor: not-allowed; }
-.room-mode-chip { height: 27px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-2); font: inherit; font-size: 11.5px; font-weight: 700; cursor: default; }
+.room-mode-chip { height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 22px; border: 1px solid var(--line-strong); border-radius: 18px; background: var(--surface); color: var(--text); font: inherit; font-size: 14.5px; font-weight: 650; box-shadow: var(--float-shadow); cursor: default; }
 button.room-mode-chip { cursor: pointer; }
-button.room-mode-chip:hover { border-color: var(--ink); color: var(--text); }
+button.room-mode-chip:hover { border-color: var(--text); background: var(--bg-muted); color: var(--text); }
 @media (max-width: 640px) { .review-preview { grid-template-columns: 1fr; } }

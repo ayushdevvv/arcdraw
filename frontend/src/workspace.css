@@ -1,6 +1,6 @@
 /* Workspace: sidebar plus library */
-.wk { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100vh; background: var(--bg); }
-.wk-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 22px; height: 100vh; padding: 22px 16px 16px; border-right: 1px solid var(--line); background: var(--bg-subtle); overflow-y: auto; }
+.wk { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100vh; min-height: 100svh; min-height: 100dvh; background: var(--bg); }
+.wk-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 22px; height: 100vh; height: 100dvh; padding: 22px 16px 16px; border-right: 1px solid var(--line); background: var(--bg-subtle); overflow-y: auto; }
 .wk-brand { padding: 0 6px; }
 .wk-side > .menu { width: 100%; }
 .wk-new { width: 100%; justify-content: flex-start; height: 44px; }

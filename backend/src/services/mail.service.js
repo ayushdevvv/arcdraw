@@ -63,3 +63,22 @@ export async function sendPasswordResetOtpEmail(user, otp, expiresInMinutes) {
   });
   return { sent };
 }
+
+
+export async function sendLoginNotificationEmail(user, { provider = "email" } = {}) {
+  const safeName = escapeHtml(user.name || "there");
+  const method = escapeHtml(provider);
+  const timestamp = new Date().toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata"
+  });
+  const sent = await sendMail({
+    to: user.email,
+    name: user.name,
+    subject: "New sign-in to your ArcDraw account",
+    text: `Hi ${user.name || "there"},\n\nA new sign-in to your ArcDraw account was completed using ${provider} on ${timestamp} (India time).\n\nIf this was you, no action is needed. If you don't recognize this activity, reset your password and review your account access.\n\nArcDraw`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#171717;padding:24px"><div style="font-size:12px;letter-spacing:3px;font-weight:700;color:#666">ARCDRAW</div><h2 style="font-size:22px;margin:24px 0 8px">New sign-in to your account</h2><p>Hi ${safeName}, a sign-in to your ArcDraw account was completed using <strong>${method}</strong>.</p><div style="padding:16px 18px;background:#f3f3f0;border:1px solid #e5e5e2;border-radius:14px;font-size:14px;line-height:1.6"><strong>Time</strong><br>${escapeHtml(timestamp)} (India time)</div><p style="color:#666;font-size:13px;line-height:1.6">If this was you, no action is needed. If you don't recognize this activity, reset your password and review your account access.</p><p style="color:#888;font-size:12px">This is an automatic security notice from ArcDraw.</p></div>`
+  });
+  return { sent };
+}

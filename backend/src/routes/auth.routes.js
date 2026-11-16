@@ -3,7 +3,6 @@ import * as authController from "../controllers/auth.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { authRateLimiter, sensitiveAuthRateLimiter } from "../middlewares/rate-limit.middleware.js";
 import { env } from "../config/env.js";
-import { ApiError } from "../utils/ApiError.js";
 
 const router = Router();
 
@@ -32,20 +31,11 @@ router.post("/logout-all", requireAuth, authController.logoutAll);
 router.post("/forgot-password", sensitiveAuthRateLimiter, authController.forgotPassword);
 router.post("/reset-password", sensitiveAuthRateLimiter, authController.resetPassword);
 
-router.get("/google", authRateLimiter, (req, res, next) => {
-  if (!env.GOOGLE_OAUTH_ENABLED) {
-    return next(new ApiError(503, "Google sign-in is not configured", "GOOGLE_OAUTH_NOT_CONFIGURED"));
-  }
-  return authController.googleStart(req, res, next);
-});
+// OAuth start handlers redirect both configured and unavailable providers back
+// through the app, so a provider issue never strands the user on an API error page.
+router.get("/google", authController.googleStart);
 router.get("/google/callback", authController.googleCallback);
-
-router.get("/github", authRateLimiter, (req, res, next) => {
-  if (!env.GITHUB_OAUTH_ENABLED) {
-    return next(new ApiError(503, "GitHub sign-in is not configured", "GITHUB_OAUTH_NOT_CONFIGURED"));
-  }
-  return authController.githubStart(req, res, next);
-});
+router.get("/github", authController.githubStart);
 router.get("/github/callback", authController.githubCallback);
 
 export default router;

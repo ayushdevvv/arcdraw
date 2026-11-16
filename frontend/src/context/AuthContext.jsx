@@ -15,14 +15,14 @@ function bootstrapAccountSession() {
       try {
         return await getCurrentUser();
       } catch (error) {
-        if (error.status === 401) {
-          try { return await refreshAccountSession(); }
-          catch (refreshError) {
-            if (refreshError.status === 401) return { user: null };
-            throw refreshError;
-          }
+        const canRecover = error.status === 401 || error.status >= 500 || error.code === "NETWORK" || error.code === "TIMEOUT";
+        if (!canRecover) throw error;
+        try {
+          return await refreshAccountSession();
+        } catch (refreshError) {
+          if (refreshError.status === 401) return { user: null };
+          throw refreshError;
         }
-        throw error;
       }
     })().finally(() => {
       authBootstrapPromise = null;

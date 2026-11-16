@@ -7,7 +7,6 @@ import { GitHubIcon, GoogleIcon } from "../../components/BrandIcons.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { toast } from "../../components/toast/toastStore.js";
 import {
-  getAuthProviders,
   register,
   verifyEmailOtp,
   resendVerificationOtp,
@@ -51,7 +50,6 @@ function friendlyError(error) {
 export default function AuthPage({ route, navigate, onGuest, redirectTo = null, allowGuest = true }) {
   const { signIn, completeSignIn, isAuthenticated, isLoading } = useAuth();
   const [view, setView] = useState(function () { return initialView(route); });
-  const [providers, setProviders] = useState({ google: false, github: false });
   const [name, setName] = useState("");
   const [email, setEmail] = useState(function () {
     return sessionStorage.getItem(PENDING_EMAIL_KEY) || sessionStorage.getItem(RESET_EMAIL_KEY) || "";
@@ -84,14 +82,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     setView(initialView(route));
     setError("");
   }, [route]);
-
-  useEffect(function () {
-    let active = true;
-    getAuthProviders()
-      .then(function (result) { if (active) setProviders(result.providers || { google: false, github: false }); })
-      .catch(function () { if (active) setProviders({ google: false, github: false }); });
-    return function () { active = false; };
-  }, []);
 
   useEffect(function () {
     const params = new URLSearchParams(window.location.search);
@@ -140,19 +130,11 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
   }
 
   function handleGoogle() {
-    if (!providers.google) {
-      setError("Google sign in isn't set up on this server yet.");
-      return;
-    }
     rememberReturnRoute();
     startGoogleLogin();
   }
 
   function handleGitHub() {
-    if (!providers.github) {
-      setError("GitHub sign in isn't set up on this server yet.");
-      return;
-    }
     rememberReturnRoute();
     startGitHubLogin();
   }
@@ -173,6 +155,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       setOtp(result.developmentOtp || "");
       startResendCooldown();
       go("verify");
+      setNotice("Verification email sent. Check your inbox.");
     } catch (cause) {
       setError(friendlyError(cause));
     } finally {
@@ -187,6 +170,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     setBusy(true);
     try {
       await signIn({ email: pendingEmail, password });
+      toast.success("Signed in successfully.", { duration: AUTH_TOAST_MS });
     } catch (cause) {
       if (cause.code === "EMAIL_NOT_VERIFIED") {
         sessionStorage.setItem(PENDING_EMAIL_KEY, pendingEmail);
@@ -214,6 +198,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       if (result.signedIn && result.user) {
         // Verified and signed in by the server: the redirect effect above sends them to the dashboard.
         completeSignIn(result.user);
+        toast.success("Email verified. You're signed in.", { duration: AUTH_TOAST_MS });
         return;
       }
       go("login");

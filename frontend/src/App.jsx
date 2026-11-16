@@ -9,6 +9,7 @@ import { useGuestSession } from "./hooks/useGuestSession.js";
 import { useAccountGate } from "./hooks/useAccountGate.js";
 import { useHashRoute } from "./app/useHashRoute.js";
 import { requireAccountForAction } from "./guest/accountGate.js";
+import { toast } from "./components/toast/toastStore.js";
 
 const POST_AUTH_ROUTE_KEY = "arcdraw:post-auth-route";
 
@@ -35,6 +36,8 @@ export default function App() {
       return;
     }
     if (isAuthenticated && params.has("signedIn")) {
+      const provider = params.get("signedIn");
+      toast.success(provider === "google" ? "Signed in with Google." : provider === "github" ? "Signed in with GitHub." : "Signed in successfully.");
       const target = sessionStorage.getItem(POST_AUTH_ROUTE_KEY) || "/workspace";
       sessionStorage.removeItem(POST_AUTH_ROUTE_KEY);
       window.history.replaceState({}, "", `${window.location.pathname}${window.location.hash}`);

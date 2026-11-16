@@ -252,7 +252,8 @@ html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #f
 
 /* Small-screen workspace: a compact top rail, scrollable nav and single-column room grid. */
 @media (max-width: 600px) {
-  .wk { display: flex; flex-direction: column; min-height: 100svh; }
+  .wk { display: flex; flex-direction: column; min-height: 100svh; min-height: 100dvh; }
+  .wk-side { height: auto; min-height: 0; }
   .wk-side { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; padding: 11px 13px 9px; }
   .wk-brand { min-width: 0; padding: 0; }
   .wk-brand span { font-size: 19px; }
@@ -374,4 +375,23 @@ html[data-theme="dark"] .room-signin-tab { background: #fafafa; border-color: #f
     padding: 0;
     justify-content: center;
   }
+}
+
+
+/* Final device viewport pass: dynamic browser chrome + safe-area spacing. */
+@media (max-width: 700px) {
+  .room { height: 100dvh; min-height: 100svh; }
+  .room-tools { bottom: max(10px, env(safe-area-inset-bottom)); }
+  .room-dock { bottom: calc(112px + env(safe-area-inset-bottom)); }
+  .room-status { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .room-topright-phone { top: max(8px, env(safe-area-inset-top)); }
+}
+@media (max-width: 599px) {
+  .room-share { border-radius: 14px; }
+}
+html[data-theme="dark"] .room-share { border-color: #166534; background: #166534; color: #ffffff; }
+html[data-theme="dark"] .room-share:hover { border-color: #15803d; background: #15803d; }
+.arc-toaster { bottom: calc(92px + env(safe-area-inset-bottom)); }
+@media (max-width: 640px) {
+  .arc-toaster { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
