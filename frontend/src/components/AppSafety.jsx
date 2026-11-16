@@ -19,7 +19,7 @@ export default function AppSafety() {
     function handleOnline() {
       if (!wasOffline.current) return;
       wasOffline.current = false;
-      toast.success("Back online.", { id: "net-status", duration: 2600 });
+      toast.success("Back online.", { id: "net-status", duration: 9000 });
     }
     function handleOfflineReady() {
       toast.info("Arcdraw is ready to work offline.", { id: "offline-ready" });

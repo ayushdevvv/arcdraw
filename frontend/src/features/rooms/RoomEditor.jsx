@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Excalidraw, Footer, MainMenu, exportToBlob, sceneCoordsToViewportCoords } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import {
-  ArrowLeft, Check, ChevronDown, Download, FileJson, FileText, GitCommit, History,
+  House, Check, ChevronDown, Download, FileJson, FileText, GitCommit, History,
   Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, Wifi, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft,
   Moon, Sun, Pencil, Presentation, MousePointer2, Hand, Square, Diamond, Circle, MoveUpRight, Minus, PenLine, Type, ImagePlus, Eraser, Layers,
   SquareKanban, WandSparkles, Palette, Frame, Brush, MessageCircle, Grid3x3, Trash2, GitPullRequest, GitMerge, SlidersHorizontal, Zap, LogIn
@@ -264,7 +264,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
       if (proposal.status === "rejected") {
         toast.warning("The owner declined your changes.", {
           description: proposal.note || "You can keep editing and submit again, or discard your draft.",
-          duration: 12000
+          duration: 9000
         });
       }
     }
@@ -1310,7 +1310,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         <p className="section-kicker">Room unavailable</p>
         <h1>We couldn't open this room.</h1>
         <p>{loadError}</p>
-        <button className="primary-button" type="button" onClick={handleBackToRooms}><ArrowLeft size={15} /> Back to rooms</button>
+        <button className="primary-button" type="button" onClick={handleBackToRooms}><House size={15} /> Back to rooms</button>
       </main>
     );
   }
@@ -1355,7 +1355,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   );
 
   const menuItems = [
-    { label: "Back to rooms", icon: <ArrowLeft size={15} />, onSelect: handleBackToRooms },
+    { label: "Back to rooms", icon: <House size={15} />, onSelect: handleBackToRooms },
     { label: "Rename room", icon: <Pencil size={15} />, onSelect: startTitleEdit, disabled: readOnly },
     ...(board.cloudId && isOwner ? [{ label: "How this room works", icon: <SlidersHorizontal size={15} />, onSelect: openMode }] : []),
     { type: "separator" },
@@ -1379,7 +1379,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   const titleNode = (
     <div className={`room-title ${isNotesRoom ? "is-notes" : ""}`}>
-      <button className="room-btn" type="button" onClick={handleBackToRooms} aria-label="Back to rooms"><ArrowLeft size={18} /></button>
+      <button className="room-btn" type="button" onClick={handleBackToRooms} aria-label="Back to rooms"><House size={18} /></button>
       {titleEditing && !readOnly ? (
         <input className="room-title-input" autoFocus value={titleDraft} onChange={handleTitleDraft} onBlur={handleRename} onKeyDown={handleTitleKey} aria-label="Room title" />
       ) : (
@@ -1970,7 +1970,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
               renderTopRightUI={renderExcalidrawTopRight}
             >
               <MainMenu>
-                <MainMenu.Item onSelect={handleBackToRooms} icon={<ArrowLeft size={15} />}>Back to rooms</MainMenu.Item>
+                <MainMenu.Item onSelect={handleBackToRooms} icon={<House size={15} />}>Back to rooms</MainMenu.Item>
                 <MainMenu.Item onSelect={startTitleEdit} icon={<Pencil size={15} />}>Rename room</MainMenu.Item>
                 <MainMenu.Separator />
                 <MainMenu.Item onSelect={exportPng} icon={<Image size={15} />}>Export as PNG</MainMenu.Item>

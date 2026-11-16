@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, MailCheck, User } from "lucide-react";
+import { Eye, EyeOff, House, LoaderCircle, LockKeyhole, Mail, MailCheck, User } from "lucide-react";
 import ArcMark from "../../components/ArcMark.jsx";
 import ThemeToggle from "../../components/ThemeToggle.jsx";
 import OtpInput from "../../components/OtpInput.jsx";
 import { GitHubIcon, GoogleIcon } from "../../components/BrandIcons.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { toast } from "../../components/toast/toastStore.js";
 import {
   getAuthProviders,
   register,
@@ -20,6 +21,7 @@ const PENDING_EMAIL_KEY = "arcdraw:pending-verification-email";
 const RESET_EMAIL_KEY = "arcdraw:password-reset-email";
 const RESEND_AT_KEY = "arcdraw:otp-resend-at";
 const POST_AUTH_KEY = "arcdraw:post-auth-route";
+const AUTH_TOAST_MS = 9000;
 
 const VIEW_COPY = {
   login: { title: "Welcome back", subtitle: "Sign in to continue to Arcdraw." },
@@ -60,12 +62,18 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
   const [developmentOtp, setDevelopmentOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [resendSeconds, setResendSeconds] = useState(function () {
     const deadline = Number(sessionStorage.getItem(RESEND_AT_KEY) || 0);
     return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
   });
+
+  // Every sign in and sign up message is a toast that disappears after 9 seconds.
+  function setError(message) {
+    if (message) toast.error(message, { duration: AUTH_TOAST_MS });
+  }
+  function setNotice(message) {
+    if (message) toast.success(message, { duration: AUTH_TOAST_MS });
+  }
 
   const copy = VIEW_COPY[view] || VIEW_COPY.login;
   const pendingEmail = useMemo(function () { return email.trim().toLowerCase(); }, [email]);
@@ -322,7 +330,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       <button className="ax-submit" type="submit" disabled={busy || disabled}>
         {busy ? <LoaderCircle size={16} className="ax-spin" /> : null}
         <span>{busy ? busyLabel : label}</span>
-        {busy ? null : <ArrowRight size={16} />}
       </button>
     );
   }
@@ -338,7 +345,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       <header className="ax-top">
         <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
         <div className="ax-top-right">
-          <button className="ax-home" type="button" onClick={goHome}><ArrowLeft size={14} /> Home</button>
+          <button className="ax-home" type="button" onClick={goHome}><House size={15} /> Home</button>
           <ThemeToggle compact />
         </div>
       </header>
@@ -357,9 +364,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
               <button type="button" role="tab" aria-selected={view === "register"} className={view === "register" ? "is-active" : ""} onClick={goRegister}>Sign up</button>
             </div>
           )}
-
-          {error && <div className="ax-alert is-error" role="alert">{error}</div>}
-          {notice && <div className="ax-alert is-ok" role="status"><Check size={15} />{notice}</div>}
 
           {showSocial && (
             <>
@@ -416,7 +420,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
             <form className="ax-form" onSubmit={handleForgot}>
               {renderEmailField()}
               {renderSubmit("Send code", "Sending", false)}
-              <button className="ax-ghost" type="button" onClick={goLogin}><ArrowLeft size={14} /> Back to sign in</button>
+              <button className="ax-ghost" type="button" onClick={goLogin}>Back to sign in</button>
             </form>
           )}
 
@@ -432,7 +436,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
           )}
 
           {allowGuest && showTabs && (
-            <button className="ax-guest" type="button" onClick={onGuest}>Continue as guest <ArrowRight size={14} /></button>
+            <button className="ax-guest" type="button" onClick={onGuest}>Continue as guest</button>
           )}
           {!allowGuest && <p className="ax-foot">Sign in is required to open this shared room.</p>}
         </section>

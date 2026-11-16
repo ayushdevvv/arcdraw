@@ -21,12 +21,12 @@ export function getToasts() {
   return toasts;
 }
 
-function defaultDuration(type, hasAction) {
+// Every toast stays for 9 seconds, except loading toasts which wait for their result.
+const TOAST_MS = 9000;
+
+function defaultDuration(type) {
   if (type === "loading") return null;
-  if (type === "error") return hasAction ? 10000 : 7000;
-  if (type === "warning") return hasAction ? 10000 : 6000;
-  if (type === "info") return hasAction ? 8000 : 4500;
-  return hasAction ? 6000 : 3200;
+  return TOAST_MS;
 }
 
 function push(type, message, options) {
