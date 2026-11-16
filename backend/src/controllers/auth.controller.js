@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { AUTH_COOKIE_NAMES } from "../constants/auth.constants.js";
+import { AUTH_COOKIE_NAMES, OAUTH_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
 import * as authService from "../services/auth.service.js";
 import { createGoogleAuthorization, resolveGoogleUser } from "../services/google-oauth.service.js";
 import { createGitHubAuthorization, resolveGitHubUser } from "../services/github-oauth.service.js";
@@ -16,7 +16,6 @@ import { safeStringEqual } from "../utils/crypto.js";
 import { createSocketToken } from "../services/token.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendLoginNotificationEmail } from "../services/mail.service.js";
-import { consumeOAuthAttempt, saveOAuthAttempt } from "../services/oauth-attempt.service.js";
 import {
   emailOnlySchema,
   loginSchema,
@@ -151,7 +150,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
 export const googleStart = asyncHandler(async (req, res) => {
   try {
     const authorization = await createGoogleAuthorization();
-    await saveOAuthAttempt({ provider: "google", ...authorization });
+    // Store each attempt in its own short-lived HTTP-only cookie. This avoids a
+    // MongoDB write/read race and allows multiple provider tabs to stay isolated.
+    setGoogleOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
     return res.redirect(302, authorization.url);
   } catch (error) {
     console.warn("[auth:oauth] Google authorization could not start:", error?.code || error?.message || error);
@@ -161,16 +162,17 @@ export const googleStart = asyncHandler(async (req, res) => {
 
 export async function googleCallback(req, res) {
   const state = typeof req.query?.state === "string" ? req.query.state : "";
+  const attempt = getGoogleOAuthCookies(req);
+  // Consume the browser-side attempt before exchanging the code. A replay or
+  // second callback cannot reuse the same state/verifier pair.
   clearGoogleOAuthCookies(res, state);
 
   try {
     if (req.query?.error) {
-      await consumeOAuthAttempt("google", state);
       return res.redirect(302, authFailureUrl("google"));
     }
-    const attempt = await consumeOAuthAttempt("google", state) || getGoogleOAuthCookies(req);
     const code = req.query?.code;
-    if (!attempt || (attempt.state && !safeStringEqual(state, attempt.state)) || !attempt.nonce || !attempt.codeVerifier || typeof code !== "string") {
+    if (!attempt || !safeStringEqual(state, attempt.state) || !attempt.nonce || !attempt.codeVerifier || typeof code !== "string") {
       throw new ApiError(400, "Google sign-in state validation failed", "GOOGLE_STATE_INVALID");
     }
 
@@ -188,7 +190,7 @@ export async function googleCallback(req, res) {
 export const githubStart = asyncHandler(async (req, res) => {
   try {
     const authorization = createGitHubAuthorization();
-    await saveOAuthAttempt({ provider: "github", ...authorization });
+    setGitHubOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
     return res.redirect(302, authorization.url);
   } catch (error) {
     console.warn("[auth:oauth] GitHub authorization could not start:", error?.code || error?.message || error);
@@ -198,16 +200,15 @@ export const githubStart = asyncHandler(async (req, res) => {
 
 export async function githubCallback(req, res) {
   const state = typeof req.query?.state === "string" ? req.query.state : "";
+  const attempt = getGitHubOAuthCookies(req);
   clearGitHubOAuthCookies(res, state);
 
   try {
     if (req.query?.error) {
-      await consumeOAuthAttempt("github", state);
       return res.redirect(302, authFailureUrl("github"));
     }
-    const attempt = await consumeOAuthAttempt("github", state) || getGitHubOAuthCookies(req);
     const code = req.query?.code;
-    if (!attempt || (attempt.state && !safeStringEqual(state, attempt.state)) || !attempt.codeVerifier || typeof code !== "string") {
+    if (!attempt || !safeStringEqual(state, attempt.state) || !attempt.codeVerifier || typeof code !== "string") {
       throw new ApiError(400, "GitHub sign-in state validation failed", "GITHUB_STATE_INVALID");
     }
 

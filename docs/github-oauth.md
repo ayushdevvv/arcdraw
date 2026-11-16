@@ -1,6 +1,6 @@
 # GitHub sign-in setup
 
-ArcDraw already contains the server-side GitHub OAuth authorization-code flow with state validation and PKCE. It requests only `read:user` and `user:email`; it does not request repository access.
+ArcDraw uses a GitHub OAuth authorization-code flow with per-attempt state validation and PKCE. It requests only `read:user` and `user:email`; it does not request repository access.
 
 ## Create the GitHub OAuth App
 
@@ -11,7 +11,7 @@ ArcDraw already contains the server-side GitHub OAuth authorization-code flow wi
 5. Authorization callback URL: `https://arcdraw.vercel.app/api/v1/auth/github/callback`.
 6. Register the app, generate a client secret and copy the Client ID and secret.
 
-For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access. The OAuth state, nonce and PKCE verifier are stored server-side for ten minutes and consumed once by the callback. Keep the callback on the frontend domain and reverse-proxied to Render so the resulting session cookie is stored first-party on the app domain.
+For local development, create a separate development OAuth App with homepage `http://localhost:5173` and callback `http://localhost:5000/api/v1/auth/github/callback`. Keeping a separate development app avoids changing the production callback when switching environments. ArcDraw uses only the `read:user` and `user:email` scopes for profile/email sign-in; it does not need repository access. Each attempt stores its random state and PKCE verifier in its own ten-minute HTTP-only cookie scoped only to the callback path. The callback validates and clears that cookie before exchanging the authorization code. Keep the production callback on the frontend domain and reverse-proxied to Render so the resulting session cookie remains first-party.
 
 ## Backend environment
 

@@ -71,3 +71,12 @@ local guest rooms remain available without the cloud socket.
 - The `unload` permissions-policy warning is emitted by browser/library code
   attempting to use a restricted unload behavior. It is separate from the
   React render loop and normally does not prevent editing.
+
+
+## Google or GitHub returns to sign-in instead of the workspace
+
+- Confirm `CLIENT_URL` is the exact production frontend origin. In production, ArcDraw keeps OAuth callbacks on that origin and sends them through the Vercel `/api/v1` rewrite.
+- Register `https://<your-vercel-domain>/api/v1/auth/google/callback` and `https://<your-vercel-domain>/api/v1/auth/github/callback` as the exact provider callback URLs. Do not register the Render API host as the production callback.
+- Keep `COOKIE_SECURE=true` and use the supplied Render configuration (`COOKIE_SAME_SITE=none`). The short-lived OAuth attempt cookie itself uses `SameSite=Lax` because the provider returns by a top-level GET.
+- Redeploy the backend after changing callback URLs or OAuth credentials.
+- A successful callback redirects to `/?signedIn=google` or `/?signedIn=github`; the app then restores the account from `/api/v1/auth/me`.

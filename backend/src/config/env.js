@@ -66,6 +66,33 @@ if (!parsed.success) {
 
 const values = parsed.data;
 const clientOrigin = new URL(values.CLIENT_URL).origin;
+const apiOrigin = new URL(values.API_PUBLIC_URL).origin;
+const oauthCallbackOrigin = values.NODE_ENV === "production" ? clientOrigin : apiOrigin;
+const googleCallbackPath = "/api/v1/auth/google/callback";
+const githubCallbackPath = "/api/v1/auth/github/callback";
+
+function resolveOAuthCallback(configuredUrl, callbackPath, provider) {
+  const fallbackUrl = `${oauthCallbackOrigin}${callbackPath}`;
+  if (!configuredUrl) return fallbackUrl;
+
+  try {
+    const configured = new URL(configuredUrl);
+    // In production callback responses must be returned through the same
+    // frontend origin that owns the first-party session cookies.
+    if (values.NODE_ENV === "production" && configured.origin !== clientOrigin) {
+      console.warn(`[config] ${provider} callback must use CLIENT_URL in production; using ${fallbackUrl}`);
+      return fallbackUrl;
+    }
+    if (configured.pathname !== callbackPath) {
+      console.warn(`[config] ${provider} callback path is incorrect; using ${fallbackUrl}`);
+      return fallbackUrl;
+    }
+    return configured.toString();
+  } catch {
+    console.warn(`[config] ${provider} callback URL is invalid; using ${fallbackUrl}`);
+    return fallbackUrl;
+  }
+}
 
 if (values.COOKIE_SAME_SITE === "none" && !values.COOKIE_SECURE) {
   console.error("COOKIE_SECURE must be true when COOKIE_SAME_SITE=none.");
@@ -87,9 +114,10 @@ if (values.NODE_ENV === "production") {
 
 export const env = Object.freeze({
   ...values,
-  // Keep OAuth callbacks on the app origin so auth session cookies remain first-party.
-  GOOGLE_CALLBACK_URL: values.GOOGLE_CALLBACK_URL || `${clientOrigin}/api/v1/auth/google/callback`,
-  GITHUB_CALLBACK_URL: values.GITHUB_CALLBACK_URL || `${clientOrigin}/api/v1/auth/github/callback`,
+  // Production callbacks stay on the frontend origin and pass through the
+  // Vercel /api/v1 rewrite. Local callbacks go straight to the backend origin.
+  GOOGLE_CALLBACK_URL: resolveOAuthCallback(values.GOOGLE_CALLBACK_URL, googleCallbackPath, "Google"),
+  GITHUB_CALLBACK_URL: resolveOAuthCallback(values.GITHUB_CALLBACK_URL, githubCallbackPath, "GitHub"),
   CORS_ORIGINS: values.CORS_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean),
   GOOGLE_OAUTH_ENABLED: Boolean(values.GOOGLE_CLIENT_ID && values.GOOGLE_CLIENT_SECRET),
   GITHUB_OAUTH_ENABLED: Boolean(values.GITHUB_CLIENT_ID && values.GITHUB_CLIENT_SECRET),

@@ -210,3 +210,6 @@ html[data-theme="dark"] .hp-hero h1 { color: var(--text); text-shadow: none; }
 .hp-nav.is-collapsed .hp-burger { display: grid; }
 .hp-nav.is-collapsed .brand-lockup { gap: 0; }
 @media (min-width: 981px) { .hp-menu { left: 50%; right: auto; width: 280px; margin-left: -140px; } }
+
+/* Keep the landing hero flat black in dark mode; no pale radial halo behind text. */
+html[data-theme="dark"] .hp-hero::before { background: none; }
