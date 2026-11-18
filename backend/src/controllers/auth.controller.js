@@ -10,6 +10,8 @@ import {
   getGoogleOAuthCookies,
   getGitHubOAuthCookies,
   setAuthCookies,
+  setGoogleOAuthCookies,
+  setGitHubOAuthCookies
 } from "../utils/cookies.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { safeStringEqual } from "../utils/crypto.js";
