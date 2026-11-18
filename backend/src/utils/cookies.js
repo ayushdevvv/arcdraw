@@ -10,6 +10,11 @@ function baseCookieOptions() {
   };
 }
 
+// OAuth provider round-trips are cross-site top-level navigations. Use the
+// explicit Chromium-compatible setting in HTTPS deployments; local HTTP keeps
+// Lax because browsers reject SameSite=None without Secure.
+const oauthSameSite = env.COOKIE_SECURE ? "none" : "lax";
+
 export function setAuthCookies(res, { accessToken, refreshToken }) {
   res.cookie(AUTH_COOKIE_NAMES.access, accessToken, {
     ...baseCookieOptions(),
@@ -57,9 +62,9 @@ function setOAuthAttemptCookie(res, provider, state, payload, callbackPath, maxA
   res.cookie(name, base64Encode(payload), {
     ...baseCookieOptions(),
     httpOnly: true,
-    // OAuth providers return by top-level GET navigation. Lax is sufficient
-    // and avoids depending on third-party-cookie access during the handshake.
-    sameSite: "lax",
+    // OAuth returns from a different site. In production this cookie is
+    // Secure + SameSite=None; local HTTP falls back to Lax.
+    sameSite: oauthSameSite,
     path: callbackPath,
     maxAge
   });
@@ -91,14 +96,14 @@ function readOAuthAttemptCookie(req, provider, state, callbackPath) {
 function clearOAuthAttemptCookie(res, provider, state, callbackPath) {
   const base = baseCookieOptions();
   const name = oauthAttemptCookieName(provider, state);
-  if (name) res.clearCookie(name, { ...base, sameSite: "lax", path: callbackPath });
+  if (name) res.clearCookie(name, { ...base, sameSite: oauthSameSite, path: callbackPath });
 
   // Also expire legacy names so stale cookies from older builds cannot linger.
   const legacyNames = provider === "google"
     ? [AUTH_COOKIE_NAMES.googleState, AUTH_COOKIE_NAMES.googleNonce, AUTH_COOKIE_NAMES.googleCodeVerifier]
     : [AUTH_COOKIE_NAMES.githubState, AUTH_COOKIE_NAMES.githubCodeVerifier];
   for (const legacyName of legacyNames) {
-    res.clearCookie(legacyName, { ...base, path: callbackPath });
+    res.clearCookie(legacyName, { ...base, sameSite: oauthSameSite, path: callbackPath });
   }
 }
 

@@ -77,6 +77,19 @@ local guest rooms remain available without the cloud socket.
 
 - Confirm `CLIENT_URL` is the exact production frontend origin. In production, ArcDraw keeps OAuth callbacks on that origin and sends them through the Vercel `/api/v1` rewrite.
 - Register `https://<your-vercel-domain>/api/v1/auth/google/callback` and `https://<your-vercel-domain>/api/v1/auth/github/callback` as the exact provider callback URLs. Do not register the Render API host as the production callback.
-- Keep `COOKIE_SECURE=true` and use the supplied Render configuration (`COOKIE_SAME_SITE=none`). The short-lived OAuth attempt cookie itself uses `SameSite=Lax` because the provider returns by a top-level GET.
+- Keep `COOKIE_SECURE=true` and use the supplied Render configuration (`COOKIE_SAME_SITE=none`). The short-lived OAuth attempt cookie uses `SameSite=None; Secure` in production and `SameSite=Lax` on local HTTP.
 - Redeploy the backend after changing callback URLs or OAuth credentials.
 - A successful callback redirects to `/?signedIn=google` or `/?signedIn=github`; the app then restores the account from `/api/v1/auth/me`.
+
+### OAuth returns to the home page only in Chrome
+
+ArcDraw is also a PWA. Older service-worker builds used the SPA navigation
+fallback for every same-origin navigation, which could intercept `/api/v1/auth/google`,
+`/api/v1/auth/github`, or their callback URLs and serve `index.html` instead of
+letting Vercel proxy the request to the API. The current Workbox config excludes
+all `/api/*` and Socket.IO navigations from that fallback. Deploy the frontend
+and reload Chrome once so the updated service worker can take control.
+
+Production OAuth attempt cookies use `SameSite=None; Secure` and local HTTP
+uses `SameSite=Lax`; their callback path and expiry are preserved and cleared
+with matching cookie attributes.

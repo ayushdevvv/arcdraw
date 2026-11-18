@@ -31,6 +31,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,woff,woff2,ttf,otf,png,webp}"],
         navigateFallback: "/index.html",
+        // OAuth starts and callbacks are top-level navigations to same-origin
+        // API URLs. Never serve the SPA shell for these routes: Chrome's
+        // installed PWA service worker otherwise intercepts them and sends the
+        // user back to the home page instead of reaching the API proxy.
+        navigateFallbackDenylist: [/^\/api(?:\/|$)/, /^\/socket\.io(?:\/|$)/],
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         clientsClaim: true,
