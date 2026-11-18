@@ -74,6 +74,23 @@ export function AuthProvider({ children }) {
     setAuthError("");
   }, []);
 
+  // Asks the server again who the cookies belong to. Used when returning from
+  // Google or GitHub, where the first check can lose a race with a cold server.
+  const refreshUser = useCallback(async () => {
+    try {
+      const result = await bootstrapAccountSession();
+      if (result && result.user) {
+        setUser(result.user);
+        setStatus("authenticated");
+        setAuthError("");
+        return result.user;
+      }
+    } catch {
+      // The caller decides whether to try again.
+    }
+    return null;
+  }, []);
+
   const signOut = useCallback(async () => {
     try {
       await logoutRequest();
@@ -93,9 +110,10 @@ export function AuthProvider({ children }) {
     authError,
     signIn,
     completeSignIn,
+    refreshUser,
     signOut,
     setAuthError
-  }), [user, status, authError, signIn, completeSignIn, signOut]);
+  }), [user, status, authError, signIn, completeSignIn, refreshUser, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

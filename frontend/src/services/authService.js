@@ -46,12 +46,66 @@ export const resetPasswordWithOtp = (data) => apiRequest("/auth/reset-password",
   body: JSON.stringify(data)
 });
 
+const OAUTH_PENDING_KEY = "arcdraw:oauth-pending";
+
+export function markOAuthPending(provider) {
+  try {
+    sessionStorage.setItem(OAUTH_PENDING_KEY, JSON.stringify({ provider: provider, at: Date.now() }));
+  } catch {
+    // Session storage can be blocked. The sign in itself still works.
+  }
+}
+
+export function readOAuthPending() {
+  try {
+    const raw = sessionStorage.getItem(OAUTH_PENDING_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    // A marker older than 10 minutes belongs to an abandoned attempt.
+    if (!value || Date.now() - Number(value.at || 0) > 10 * 60 * 1000) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+export function clearOAuthPending() {
+  try {
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+// A stale service worker can answer the provider redirect with the app shell,
+// which sends the user back to the home page without ever reaching the API.
+// Removing the registrations right before leaving makes the redirect go
+// straight to the network. The worker registers again when the app reloads.
+async function releaseServiceWorkers() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(function (registration) { return registration.unregister(); }));
+  } catch {
+    // Continue to the provider even if cleanup fails.
+  }
+}
+
+async function leaveForProvider(provider) {
+  markOAuthPending(provider);
+  await Promise.race([
+    releaseServiceWorkers(),
+    new Promise(function (resolve) { window.setTimeout(resolve, 1500); })
+  ]);
+  window.location.assign(`${API_BASE_URL}/auth/${provider}`);
+}
+
 export function startGoogleLogin() {
-  window.location.assign(`${API_BASE_URL}/auth/google`);
+  return leaveForProvider("google");
 }
 
 export function startGitHubLogin() {
-  window.location.assign(`${API_BASE_URL}/auth/github`);
+  return leaveForProvider("github");
 }
 
 export const getAuthProviders = () => apiRequest("/auth/providers");
