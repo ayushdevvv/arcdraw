@@ -395,3 +395,6 @@ html[data-theme="dark"] .room-share:hover { border-color: #15803d; background: #
 @media (max-width: 640px) {
   .arc-toaster { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
+@media (max-width: 599px) {
+  .room-topright .room-profile-inbox { flex: 0 0 40px; width: 40px; min-width: 40px; height: 40px; min-height: 40px; border-radius: 14px; }
+}

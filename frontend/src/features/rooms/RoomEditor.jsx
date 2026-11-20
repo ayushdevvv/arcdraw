@@ -122,7 +122,7 @@ function inferComponentProperties(elements = []) {
   return properties.slice(0, 40);
 }
 
-export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, onSignIn, user, isAuthenticated = false }) {
+export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, onSignIn, user, isAuthenticated = false, joinRequestCount = 0, onOpenJoinRequests }) {
   const [isPhone, setIsPhone] = useState(function () { return typeof window !== "undefined" && window.matchMedia("(max-width: 599px)").matches; });
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1308,7 +1308,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         <p className="section-kicker">Room unavailable</p>
         <h1>We couldn't open this room.</h1>
         <p>{loadError}</p>
-        <button className="primary-button" type="button" onClick={handleBackToRooms}><House size={15} /> Back to rooms</button>
+        <button className="primary-button" type="button" onClick={handleBackToRooms}><House size={15} /> Back to dashboard</button>
       </main>
     );
   }
@@ -1353,7 +1353,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   );
 
   const menuItems = [
-    { label: "Back to rooms", icon: <House size={15} />, onSelect: handleBackToRooms },
+    { label: "Dashboard", icon: <House size={15} />, onSelect: handleBackToRooms },
     { label: "Rename room", icon: <Pencil size={15} />, onSelect: startTitleEdit, disabled: readOnly },
     ...(board.cloudId && isOwner ? [{ label: "How this room works", icon: <SlidersHorizontal size={15} />, onSelect: openMode }] : []),
     { type: "separator" },
@@ -1377,7 +1377,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   const titleNode = (
     <div className={`room-title ${isNotesRoom ? "is-notes" : ""}`}>
-      <button className="room-btn" type="button" onClick={handleBackToRooms} aria-label="Back to rooms"><House size={18} /></button>
+      <button className="room-btn" type="button" onClick={handleBackToRooms} aria-label="Go to dashboard" title="Dashboard"><House size={18} /></button>
       {titleEditing && !readOnly ? (
         <input className="room-title-input" autoFocus value={titleDraft} onChange={handleTitleDraft} onBlur={handleRename} onKeyDown={handleTitleKey} aria-label="Room title" />
       ) : (
@@ -1412,6 +1412,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         </button>
       )}
       {!shareToken && !isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> <span className="rt-label">Sign in</span></button>}
+      {isAuthenticated && <button className="room-profile-inbox" type="button" onClick={onOpenJoinRequests} aria-label={`Open profile and room requests${joinRequestCount ? `, ${joinRequestCount} pending` : ""}`} title="Profile and room requests"><span className="room-profile-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : (user?.name || user?.email || "A").slice(0, 1).toUpperCase()}</span>{joinRequestCount > 0 && <b>{joinRequestCount > 9 ? "9+" : joinRequestCount}</b>}</button>}
       {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> <span className="rt-label">Share</span></button>}
       <Menu renderTrigger={renderMoreTrigger} items={menuItems} width={244} label="Room menu" />
     </div>
@@ -1967,7 +1968,7 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
               renderTopRightUI={renderExcalidrawTopRight}
             >
               <MainMenu>
-                <MainMenu.Item onSelect={handleBackToRooms} icon={<House size={15} />}>Back to rooms</MainMenu.Item>
+                <MainMenu.Item onSelect={handleBackToRooms} icon={<House size={15} />}>Dashboard</MainMenu.Item>
                 <MainMenu.Item onSelect={startTitleEdit} icon={<Pencil size={15} />}>Rename room</MainMenu.Item>
                 <MainMenu.Separator />
                 <MainMenu.Item onSelect={exportPng} icon={<Image size={15} />}>Export as PNG</MainMenu.Item>

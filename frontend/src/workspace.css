@@ -109,3 +109,9 @@
 .wk-empty-icon { border-radius: 16px; }
 .wk-sheet { border-radius: 8px; }
 .wk-card:hover, .wk-card:focus-within { border-color: var(--line-strong); }
+
+/* Owner inbox indicator on the account profile button. */
+.wk-avatar-wrap{position:relative;display:inline-flex;flex:none}
+.wk-avatar-wrap .wk-avatar{overflow:hidden}
+.wk-avatar-wrap .wk-avatar img{width:100%;height:100%;display:block;object-fit:cover}
+.wk-avatar-alert{position:absolute;top:-6px;right:-7px;min-width:16px;height:16px;display:grid;place-items:center;padding:0 4px;border:2px solid var(--surface);border-radius:99px;background:#dd554b;color:#fff;font:800 8px/1 var(--font-sans);font-style:normal}

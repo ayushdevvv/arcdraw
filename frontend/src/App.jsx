@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Home from "./pages/Home.jsx";
 import Workspace from "./pages/Workspace.jsx";
 import RoomEditor from "./features/rooms/RoomEditor.jsx";
@@ -11,6 +11,8 @@ import { useHashRoute } from "./app/useHashRoute.js";
 import { requireAccountForAction } from "./guest/accountGate.js";
 import { toast } from "./components/toast/toastStore.js";
 import { readOAuthPending, clearOAuthPending } from "./services/authService.js";
+import { useRoomJoinRequests } from "./realtime/useRoomJoinRequests.js";
+import JoinRequestDialog from "./components/JoinRequestDialog.jsx";
 
 const POST_AUTH_ROUTE_KEY = "arcdraw:post-auth-route";
 
@@ -20,6 +22,8 @@ export default function App() {
   const { user, isAuthenticated, isLoading, signOut, refreshUser } = useAuth();
   const oauthHandled = useRef(false);
   const { pendingAction, dismiss } = useAccountGate();
+  const [joinInboxOpen, setJoinInboxOpen] = useState(false);
+  const joinInbox = useRoomJoinRequests(isAuthenticated ? user : null);
 
   const shareMatch = route.match(/^\/share\/([^/]+)$/);
   const roomMatch = route.match(/^\/room\/([^/]+)$/);
@@ -109,7 +113,7 @@ export default function App() {
   let content;
   if (shareMatch) {
     content = session ? (
-      <RoomEditor guestId={session.guestId} shareToken={decodeURIComponent(shareMatch[1])} onBack={backToWorkspace} onAccountRequired={(action) => requireAccountForAction(isAuthenticated, action)} onSignIn={() => openAuth(route)} user={user} isAuthenticated={isAuthenticated} />
+      <RoomEditor guestId={session.guestId} shareToken={decodeURIComponent(shareMatch[1])} onBack={backToWorkspace} onAccountRequired={(action) => requireAccountForAction(isAuthenticated, action)} onSignIn={() => openAuth(route)} user={user} isAuthenticated={isAuthenticated} joinRequestCount={joinInbox.requests.length} onOpenJoinRequests={() => setJoinInboxOpen(true)} />
     ) : <div className="editor-loading">Opening shared room…</div>;
   } else if (route.startsWith("/auth/")) {
     content = <AuthPage route={route} navigate={navigate} onGuest={openWorkspace} redirectTo={sessionStorage.getItem(POST_AUTH_ROUTE_KEY) || "/workspace"} />;
@@ -123,6 +127,8 @@ export default function App() {
         onSignIn={() => openAuth(route)}
         user={user}
         isAuthenticated={isAuthenticated}
+        joinRequestCount={joinInbox.requests.length}
+        onOpenJoinRequests={() => setJoinInboxOpen(true)}
       />
     ) : <div className="editor-loading">Opening your room…</div>;
   } else if (route === "/workspace") {
@@ -130,10 +136,12 @@ export default function App() {
       <Workspace
         guestId={session.guestId}
         onOpenBoard={openBoard}
-        onBackHome={() => navigate("/")}
+        onBackHome={() => navigate("/workspace")}
         onSignIn={() => openAuth("/workspace")}
         onSignOut={signOut}
         user={user}
+        joinRequestCount={joinInbox.requests.length}
+        onOpenJoinRequests={() => setJoinInboxOpen(true)}
       />
     ) : <div className="editor-loading">Opening your workspace…</div>;
   } else {
@@ -144,6 +152,16 @@ export default function App() {
     <>
       {content}
       <AccountGateModal action={pendingAction} onClose={dismiss} onSignIn={() => { dismiss(); openAuth(route); }} isAuthenticated={isAuthenticated} />
+      <JoinRequestDialog
+        open={joinInboxOpen}
+        onClose={() => setJoinInboxOpen(false)}
+        requests={joinInbox.requests}
+        loading={joinInbox.loading}
+        error={joinInbox.error}
+        resolvingId={joinInbox.resolvingId}
+        onRefresh={joinInbox.refresh}
+        onResolve={joinInbox.resolve}
+      />
     </>
   );
 }

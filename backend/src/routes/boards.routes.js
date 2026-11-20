@@ -7,13 +7,14 @@ import {
 import {
   createCloudBoard, getCloudBoard, renameCloudBoard, updateBoardSettings,
   createShareLink, listShareLinks, revokeShareLink, updateBoardVisibility,
-  requestToJoinBoard, listJoinRequests, resolveJoinRequest,
+  requestToJoinBoard, listJoinRequests, listOwnedJoinRequests, resolveJoinRequest,
   getCommitHistory, createCommit, restoreCommit
 } from "../controllers/boards.controller.js";
 
 const router = express.Router();
 router.use(requireAccount);
 router.post("/", createCloudBoard);
+router.get("/join-requests/inbox", listOwnedJoinRequests);
 router.get("/:boardId", getCloudBoard);
 router.patch("/:boardId", renameCloudBoard);
 router.patch("/:boardId/settings", updateBoardSettings);

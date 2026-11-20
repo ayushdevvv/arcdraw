@@ -171,15 +171,73 @@ export const requestToJoinBoard = asyncHandler(async (req, res) => {
   }
 
   let request = await BoardJoinRequest.findOne({ board: board._id, user: req.auth.userId });
+  let shouldNotifyOwner = false;
   if (!request) {
     request = await BoardJoinRequest.create({ board: board._id, user: req.auth.userId, status: "pending" });
+    shouldNotifyOwner = true;
   } else if (request.status !== "pending") {
     request.status = "pending";
     request.resolvedAt = null;
     request.resolvedBy = null;
     await request.save();
+    shouldNotifyOwner = true;
   }
+
+  // Notify every active session belonging to the owner, even when they are
+  // outside this room. The owner-wide inbox endpoint is the reconnect fallback.
+  if (shouldNotifyOwner) {
+    const populated = await BoardJoinRequest.findById(request._id)
+      .populate("user", "name email avatarUrl")
+      .lean();
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user:${String(board.owner)}`).emit("room:join-request", {
+        id: String(request._id),
+        status: request.status,
+        createdAt: request.createdAt,
+        user: populated?.user ? {
+          id: String(populated.user._id),
+          name: populated.user.name,
+          email: populated.user.email,
+          avatarUrl: populated.user.avatarUrl || null
+        } : null,
+        board: { id: String(board._id), title: board.title, kind: board.kind || "board" }
+      });
+    }
+  }
+
   res.status(202).json({ success: true, data: { status: request.status } });
+});
+
+export const listOwnedJoinRequests = asyncHandler(async (req, res) => {
+  const ownedBoards = await Board.find({ owner: req.auth.userId }).select("_id").lean();
+  const boardIds = ownedBoards.map((board) => board._id);
+  if (!boardIds.length) {
+    return res.json({ success: true, data: { requests: [] } });
+  }
+
+  const requests = await BoardJoinRequest.find({ board: { $in: boardIds }, status: "pending" })
+    .sort({ createdAt: -1 })
+    .populate("user", "name email avatarUrl")
+    .populate("board", "title kind")
+    .lean();
+
+  res.json({ success: true, data: { requests: requests.map((item) => ({
+    id: String(item._id),
+    status: item.status,
+    createdAt: item.createdAt,
+    user: item.user ? {
+      id: String(item.user._id),
+      name: item.user.name,
+      email: item.user.email,
+      avatarUrl: item.user.avatarUrl || null
+    } : null,
+    board: item.board ? {
+      id: String(item.board._id),
+      title: item.board.title,
+      kind: item.board.kind || "board"
+    } : null
+  })) } });
 });
 
 export const listJoinRequests = asyncHandler(async (req, res) => {
@@ -212,6 +270,18 @@ export const resolveJoinRequest = asyncHandler(async (req, res) => {
   request.resolvedAt = new Date();
   request.resolvedBy = req.auth.userId;
   await request.save();
+
+  const io = req.app.get("io");
+  if (io) {
+    const resolution = {
+      boardId: String(board._id),
+      requestId: String(request._id),
+      status: request.status,
+      boardTitle: board.title
+    };
+    io.to(`user:${String(request.user)}`).emit("room:join-request:resolved", resolution);
+    io.to(`user:${String(board.owner)}`).emit("room:join-request:resolved", resolution);
+  }
   res.json({ success: true, data: { status: request.status } });
 });
 

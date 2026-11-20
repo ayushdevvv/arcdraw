@@ -2,9 +2,9 @@ import { toast } from "../components/toast/toastStore.js";
 import { friendlyError } from "../utils/errors.js";
 import { useMemo, useRef, useState } from "react";
 import {
-  ArrowUpRight, CloudUpload, Copy, Folder, FolderPlus, LayoutGrid, LogIn, LogOut,
+  CloudUpload, Copy, Folder, FolderPlus, LayoutGrid, LogIn, LogOut,
   MoreHorizontal, NotebookPen, PanelsTopLeft, Pencil, Plus, Search, Settings2, Star,
-  Trash2, Upload, X, ChevronsUpDown, FolderInput
+  Trash2, Upload, X, ChevronsUpDown, FolderInput, Inbox
 } from "lucide-react";
 import ArcMark from "../components/ArcMark.jsx";
 import Menu from "../components/Menu.jsx";
@@ -155,7 +155,7 @@ function FolderButton({ folder, active, count, onSelect }) {
   );
 }
 
-export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onBackHome, onSignIn, onSignOut, user }) {
+export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onBackHome, onSignIn, onSignOut, user, joinRequestCount = 0, onOpenJoinRequests }) {
   const { boards: rooms, loading, error } = useBoards(guestId);
   const folders = useFolders(guestId);
   const noteCounts = useRoomNoteCounts(guestId);
@@ -373,12 +373,14 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
 
   const userItems = user ? [
     { type: "heading", label: user.email || "Signed in" },
+    { label: joinRequestCount ? `Room requests · ${joinRequestCount}` : "Room requests", icon: <Inbox size={15} />, onSelect: onOpenJoinRequests },
+    { type: "separator" },
     { label: "Sign out", icon: <LogOut size={15} />, onSelect: onSignOut },
-    { label: "Back to home", icon: <ArrowUpRight size={15} />, onSelect: onBackHome }
+    { label: "Dashboard", icon: <LayoutGrid size={15} />, onSelect: onBackHome }
   ] : [
     { type: "heading", label: "Guest space" },
     { label: "Sign in", icon: <LogIn size={15} />, onSelect: onSignIn },
-    { label: "Back to home", icon: <ArrowUpRight size={15} />, onSelect: onBackHome }
+    { label: "Dashboard", icon: <LayoutGrid size={15} />, onSelect: onBackHome }
   ];
 
   function renderCreate({ toggle, open }) {
@@ -387,7 +389,7 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
   function renderUser({ toggle, open }) {
     return (
       <button className="wk-user" type="button" data-menu-trigger onClick={toggle} aria-haspopup="menu" aria-expanded={open}>
-        <span className="wk-avatar">{(user?.name || user?.email || "G").slice(0, 1).toUpperCase()}</span>
+        <span className="wk-avatar-wrap"><span className="wk-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : (user?.name || user?.email || "G").slice(0, 1).toUpperCase()}</span>{joinRequestCount > 0 && <i className="wk-avatar-alert">{joinRequestCount > 9 ? "9+" : joinRequestCount}</i>}</span>
         <span className="wk-user-text"><strong>{user?.name || "Guest"}</strong><small>{user ? "Signed in" : "Saved on this device"}</small></span>
         <ChevronsUpDown size={14} />
       </button>

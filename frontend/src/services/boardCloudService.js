@@ -100,6 +100,11 @@ export async function listJoinRequests(boardId) {
   return result.data.requests || [];
 }
 
+export async function listOwnedJoinRequests() {
+  const result = await apiRequest("/boards/join-requests/inbox");
+  return result.data.requests || [];
+}
+
 export async function resolveJoinRequest(boardId, requestId, decision) {
   const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}/join-requests/${encodeURIComponent(requestId)}`, {
     method: "PATCH",

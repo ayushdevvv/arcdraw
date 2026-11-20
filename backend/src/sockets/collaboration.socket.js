@@ -36,6 +36,10 @@ function roomName(boardId) {
   return `board:${String(boardId)}`;
 }
 
+function userRoom(userId) {
+  return `user:${String(userId)}`;
+}
+
 function clearShareExpiryTimer(socket, boardId) {
   const timer = socket.data.shareExpiryTimers?.get(String(boardId));
   if (timer) clearTimeout(timer);
@@ -177,6 +181,10 @@ export function attachCollaborationSocket(httpServer, env) {
   });
 
   io.on("connection", (socket) => {
+    // Authenticated sockets subscribe to a private user channel so inbox events
+    // can reach the owner while they are on the dashboard or another room.
+    if (socket.data.userId) socket.join(userRoom(socket.data.userId));
+
     socket.on("board:join", async (payload = {}, acknowledge = () => {}) => {
       try {
         const boardId = String(payload.boardId || "");
