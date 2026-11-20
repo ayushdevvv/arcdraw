@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   Menu, X, Eraser, Hand, ListChecks, MousePointer2, NotebookText, Presentation,
   Share2, Shapes, SquareKanban, Square, Circle, Type, Users, WandSparkles,
-  Layers, GitPullRequest, GitCommitHorizontal, Eye, Zap, Check
+  Layers, GitPullRequest, GitCommitHorizontal, Eye, Zap, Check, WifiOff, Video, Mic, RefreshCw,
+  Command, Terminal, FolderOpen, Bell, Keyboard
 } from "lucide-react";
 import ArcMark from "../components/ArcMark.jsx";
 import Drawer from "../components/Drawer.jsx";
@@ -76,6 +77,55 @@ const STEPS = [
   { icon: ListChecks, title: "Plan and ship", text: "Turn ideas into tasks, milestones and saved versions inside the same room." }
 ];
 
+const DESKTOP_FEATURES = [
+  { icon: WifiOff, title: "Offline editor", text: "Keep drawing and writing with no connection. Your work waits on your computer." },
+  { icon: RefreshCw, title: "Background sync", text: "Changes sync on their own the moment you are back online, with no merge headaches." },
+  { icon: Video, title: "Voice and video", text: "Talk through a board with your team without leaving the room." },
+  { icon: FolderOpen, title: "Local files", text: "Open and save boards and notes straight from your own folders." },
+  { icon: Keyboard, title: "Quick capture", text: "A global shortcut drops a new note or board from any app." },
+  { icon: Bell, title: "Native alerts", text: "Get desktop notifications for mentions, reviews and merged changes." }
+];
+
+function WindowsIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="2" y="2" width="9.4" height="9.4" />
+      <rect x="12.6" y="2" width="9.4" height="9.4" />
+      <rect x="2" y="12.6" width="9.4" height="9.4" />
+      <rect x="12.6" y="12.6" width="9.4" height="9.4" />
+    </svg>
+  );
+}
+
+const PLATFORMS = [
+  { name: "Windows", icon: WindowsIcon },
+  { name: "macOS", icon: Command },
+  { name: "Linux", icon: Terminal }
+];
+
+function DesktopMock() {
+  return (
+    <div className="hp-win" aria-hidden="true">
+      <div className="hp-win-bar"><i /><i /><i /><span>Product map</span><em><WifiOff size={12} /> Offline</em></div>
+      <div className="hp-win-body">
+        <div className="hp-win-side"><b /><s /><s /><s /><s className="on" /><s /></div>
+        <div className="hp-win-canvas">
+          <svg viewBox="0 0 420 220">
+            <rect className="hp-win-node solid" x="30" y="40" width="120" height="60" />
+            <rect className="hp-win-node" x="250" y="30" width="130" height="60" />
+            <rect className="hp-win-node" x="140" y="136" width="130" height="58" />
+            <path className="hp-win-link" d="M150 70 C 200 70, 210 60, 250 60" />
+            <path className="hp-win-link" d="M315 90 C 315 130, 290 160, 270 165" />
+            <path className="hp-win-link dash" d="M90 100 C 90 150, 110 165, 140 165" />
+          </svg>
+          <div className="hp-win-call"><Mic size={13} /><Video size={13} /><span>2 in call</span></div>
+        </div>
+      </div>
+      <div className="hp-win-status"><span><RefreshCw size={12} /> 3 changes waiting to sync</span><span>Saved on this computer</span></div>
+    </div>
+  );
+}
+
 const MODES = [
   { icon: Zap, title: "Live editing", text: "Everyone draws at the same time. Fast, open and collaborative.", points: ["Real time cursors", "Instant sync", "Saved versions on demand"] },
   { icon: GitPullRequest, title: "Commit and review", text: "Editors work on a private draft. You review and merge what ships.", points: ["Private drafts", "Before and after preview", "Merge or decline with a note"] }
@@ -144,6 +194,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
   function goFeatures() { scrollToId("hp-features"); }
   function goModes() { scrollToId("hp-modes"); }
   function goSteps() { scrollToId("hp-steps"); }
+  function goSoon() { scrollToId("hp-soon"); }
 
   const FeatureIcon = feature?.icon;
 
@@ -157,6 +208,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
             <button className="roll-host" type="button" onClick={goFeatures} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="Product" /></button>
             <button className="roll-host" type="button" onClick={goModes} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="Teamwork" /></button>
             <button className="roll-host" type="button" onClick={goSteps} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="How it works" /></button>
+            <button className="roll-host" type="button" onClick={goSoon} onMouseEnter={moveSlider} onFocus={moveSlider}><RollText text="Desktop app" /></button>
           </nav>
           <div className="hp-nav-right">
             <ThemeToggle compact />
@@ -170,6 +222,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
           <button type="button" onClick={menuGo(goFeatures)}>Product</button>
           <button type="button" onClick={menuGo(goModes)}>Teamwork</button>
           <button type="button" onClick={menuGo(goSteps)}>How it works</button>
+          <button type="button" onClick={menuGo(goSoon)}>Desktop app</button>
           <button type="button" onClick={menuGo(handleSignIn)}>{user ? "Open workspace" : "Sign in"}</button>
         </div>
       </header>
@@ -183,8 +236,8 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
         </div>
         <ul className="hp-trust hp-rise" style={{ "--d": "320ms" }}>
           <li><Check size={15} /> Free to start</li>
-          <li><Check size={15} /> Works offline</li>
-          <li><Check size={15} /> Saved on your device</li>
+          <li><Check size={15} /> No account needed to start</li>
+          <li><Check size={15} /> Live collaboration</li>
         </ul>
         <div className="hp-rise hp-mock-wrap" style={{ "--d": "400ms" }}><BoardMock /></div>
       </section>
@@ -252,6 +305,41 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
         </ol>
       </section>
 
+      <section className="hp-section hp-section-alt" id="hp-soon" aria-label="Desktop app">
+        <div className="hp-desk">
+          <div className="hp-desk-copy">
+            <span className="hp-eyebrow">Coming soon</span>
+            <h2>Arcdraw for desktop.</h2>
+            <p>Arcdraw is a web app today. A native app is on the way, so your boards and notes work with or without a connection.</p>
+            <div className="hp-platforms">
+              {PLATFORMS.map(function (platform) {
+                const PlatformIcon = platform.icon;
+                return (
+                  <span className="hp-platform" key={platform.name}>
+                    <PlatformIcon size={18} />
+                    <b>{platform.name}</b>
+                    <small>Soon</small>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <DesktopMock />
+        </div>
+        <div className="hp-desk-grid">
+          {DESKTOP_FEATURES.map(function (item) {
+            const DeskIcon = item.icon;
+            return (
+              <article className="hp-desk-item" key={item.title}>
+                <span className="hp-desk-icon"><DeskIcon size={20} strokeWidth={1.7} /></span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
       <footer className="hp-footer">
         <div className="hp-footer-inner">
           <div className="hp-footer-brand">
@@ -259,7 +347,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
             <p>Boards, notes and tasks in one calm workspace.</p>
           </div>
           <div className="hp-footer-col"><strong>Product</strong><button type="button" onClick={goFeatures}>Boards</button><button type="button" onClick={goFeatures}>Notes</button><button type="button" onClick={goFeatures}>Project</button><button type="button" onClick={goFeatures}>Design Agent</button></div>
-          <div className="hp-footer-col"><strong>Teams</strong><button type="button" onClick={goModes}>Live editing</button><button type="button" onClick={goModes}>Commit and review</button><button type="button" onClick={goSteps}>How it works</button></div>
+          <div className="hp-footer-col"><strong>Teams</strong><button type="button" onClick={goModes}>Live editing</button><button type="button" onClick={goModes}>Commit and review</button><button type="button" onClick={goSteps}>How it works</button><button type="button" onClick={goSoon}>Desktop app</button></div>
           <div className="hp-footer-col"><strong>Account</strong><button type="button" onClick={handleSignIn}>{user ? "Open workspace" : "Sign in"}</button><button type="button" onClick={openWorkspace}>Workspace</button></div>
         </div>
         <div className="hp-footer-bar">

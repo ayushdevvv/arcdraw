@@ -15,9 +15,9 @@ import "./home.css";
 import "./workspace.css";
 import "./editor.css";
 import "./polish.css";
-import { registerArcdrawServiceWorker } from "./offline/registerServiceWorker.js";
+import { removeOldServiceWorker } from "./utils/removeOldServiceWorker.js";
 
-registerArcdrawServiceWorker();
+removeOldServiceWorker();
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

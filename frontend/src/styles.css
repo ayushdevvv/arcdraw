@@ -97,7 +97,9 @@ em { font-style: normal; }
 /* Brand */
 .arc-mark { display: block; width: 28px; height: 28px; flex: none; }
 .arc-mark rect { fill: var(--ink); }
-.arc-mark path { fill: var(--on-ink); }
+.arc-mark path { fill: none; stroke: var(--on-ink); stroke-linejoin: miter; stroke-miterlimit: 10; }
+.arc-mark .arc-mark-leg { stroke-width: 7; }
+.arc-mark .arc-mark-bar { stroke-width: 5; }
 .brand-lockup { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: var(--text); font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.04em; }
 
 /* Labels */
@@ -209,7 +211,6 @@ html[data-theme="dark"] .danger-button { color: #0a0a0a !important; }
 .auth-modal-secondary { border-radius: var(--r); }
 .loading-line { border-radius: 99px; }
 [data-tip]::after { border-radius: 8px; }
-.arc-mark rect { rx: 13; }
 
 
 /* ---------- Unified slide-over drawer (replaces every popup) ---------- */

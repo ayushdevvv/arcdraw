@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight, CloudUpload, Copy, Folder, FolderPlus, LayoutGrid, LogIn, LogOut,
   MoreHorizontal, NotebookPen, PanelsTopLeft, Pencil, Plus, Search, Settings2, Star,
-  Trash2, Upload, Wifi, WifiOff, X, ChevronsUpDown, FolderInput
+  Trash2, Upload, X, ChevronsUpDown, FolderInput
 } from "lucide-react";
 import ArcMark from "../components/ArcMark.jsx";
 import Menu from "../components/Menu.jsx";
@@ -21,7 +21,6 @@ import { createFolder, deleteFolder, moveRoomToFolder, renameFolder } from "../d
 import { listRoomNotes } from "../database/noteService.js";
 import { listRoomProjectItems } from "../database/projectService.js";
 import { createCloudBoard } from "../services/boardCloudService.js";
-import { useConnectivity } from "../offline/useConnectivity.js";
 
 function formatEdited(value) {
   if (!value) return "Just now";
@@ -160,7 +159,6 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
   const { boards: rooms, loading, error } = useBoards(guestId);
   const folders = useFolders(guestId);
   const noteCounts = useRoomNoteCounts(guestId);
-  const { isOnline } = useConnectivity();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("boards");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
@@ -424,7 +422,6 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
 
         <div className="wk-side-foot">
           <div className="wk-status">
-            <span className={`wk-conn ${isOnline ? "is-online" : ""}`}>{isOnline ? <Wifi size={13} /> : <WifiOff size={13} />}{isOnline ? "Online" : "Offline"}</span>
             <ThemeToggle compact />
           </div>
           <Menu renderTrigger={renderUser} items={userItems} align="start" side="top" width={232} label="Account" />

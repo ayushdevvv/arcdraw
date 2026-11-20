@@ -3,7 +3,7 @@ import { Excalidraw, Footer, MainMenu, exportToBlob, sceneCoordsToViewportCoords
 import "@excalidraw/excalidraw/index.css";
 import {
   House, Check, ChevronDown, Download, FileJson, FileText, GitCommit, History,
-  Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, Wifi, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft,
+  Image, StickyNote, LoaderCircle, MoreHorizontal, Share2, WifiOff, CloudUpload, ListTodo, Sparkles, PanelsTopLeft,
   Moon, Sun, Pencil, Presentation, MousePointer2, Hand, Square, Diamond, Circle, MoveUpRight, Minus, PenLine, Type, ImagePlus, Eraser, Layers,
   SquareKanban, WandSparkles, Palette, Frame, Brush, MessageCircle, Grid3x3, Trash2, GitPullRequest, GitMerge, SlidersHorizontal, Zap, LogIn
 } from "lucide-react";
@@ -24,7 +24,6 @@ import RoomAgentPanel from "./RoomAgentPanel.jsx";
 import RoomDesignPanel from "./RoomDesignPanel.jsx";
 import ThemeToggle from "../../components/ThemeToggle.jsx";
 import { useTheme } from "../../theme/ThemeContext.jsx";
-import { useConnectivity } from "../../offline/useConnectivity.js";
 import { ACCOUNT_REQUIRED_ACTIONS } from "../../guest/accountGate.js";
 import { useBoardCollaboration } from "../../realtime/useBoardCollaboration.js";
 import {
@@ -177,7 +176,6 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   const pendingScene = useRef(null);
   const pointerAreaRef = useRef(null);
   const notesPanelRef = useRef(null);
-  const { isOnline } = useConnectivity();
   const { theme, toggleTheme } = useTheme();
 
   // Excalidraw registers this callback in an effect. Keep it stable: an inline
@@ -1432,14 +1430,13 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
       {board.cloudId && inDraft && <button className="room-dock-btn" type="button" data-tip="Submit for review" aria-label="Submit for review" disabled={collab.status !== "connected" || draftTotal === 0 || myPending} onClick={openSubmit}><GitPullRequest size={18} />{draftTotal > 0 && <b>{draftTotal}</b>}</button>}
       {board.cloudId && isOwner && (collab.workMode === "commit" || reviewCount > 0) && <button className="room-dock-btn" type="button" data-tip="Review requests" aria-label="Review requests" onClick={openReview}><GitMerge size={18} />{reviewCount > 0 && <b>{reviewCount}</b>}</button>}
       {board.cloudId && inDraft && <button className="room-dock-btn" type="button" data-tip="My requests" aria-label="My requests" onClick={openReview}><GitMerge size={18} /></button>}
-      {board.cloudId && <button className="room-dock-btn" type="button" data-tip="History" aria-label="History" disabled={!isOnline} onClick={openHistory}><History size={18} /></button>}
+      {board.cloudId && <button className="room-dock-btn" type="button" data-tip="History" aria-label="History" onClick={openHistory}><History size={18} /></button>}
     </nav>
   );
 
   const statusNode = (
     <div className="room-status">
       <span className="room-status-item">{saveStatus === "saving" ? <LoaderCircle size={12} className="spin" /> : saveStatus === "error" ? <i className="is-error" /> : <Check size={12} />}{saveText}</span>
-      <span className="room-status-item">{isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}{isOnline ? "Online" : "Offline"}</span>
       <span className="room-status-item room-status-dim">{isNotesRoom ? `${notes.length} notes` : `${objectCount} objects`}, {taskCount} tasks</span>
     </div>
   );

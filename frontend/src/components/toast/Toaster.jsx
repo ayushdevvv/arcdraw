@@ -4,11 +4,11 @@ import { subscribe, getToasts, dismissToast } from "./toastStore.js";
 import "./toast.css";
 
 function iconFor(type) {
-  if (type === "success") return <CircleCheck size={18} strokeWidth={2} />;
-  if (type === "error") return <CircleAlert size={18} strokeWidth={2} />;
-  if (type === "warning") return <TriangleAlert size={18} strokeWidth={2} />;
-  if (type === "loading") return <LoaderCircle size={18} strokeWidth={2} className="arc-toast-spin" />;
-  return <Info size={18} strokeWidth={2} />;
+  if (type === "success") return <CircleCheck size={17} strokeWidth={2.2} />;
+  if (type === "error") return <CircleAlert size={17} strokeWidth={2.2} />;
+  if (type === "warning") return <TriangleAlert size={17} strokeWidth={2.2} />;
+  if (type === "loading") return <LoaderCircle size={17} strokeWidth={2.2} className="arc-toast-spin" />;
+  return <Info size={17} strokeWidth={2.2} />;
 }
 
 function ToastItem({ item, paused }) {
@@ -36,7 +36,7 @@ function ToastItem({ item, paused }) {
   }
 
   return (
-    <div className={"arc-toast arc-toast-" + item.type} role={item.type === "error" ? "alert" : "status"}>
+    <div className={"arc-toast arc-toast-" + item.type + (paused ? " is-paused" : "")} role={item.type === "error" ? "alert" : "status"}>
       <span className="arc-toast-icon">{iconFor(item.type)}</span>
       <div className="arc-toast-body">
         <p className="arc-toast-message">{item.message}{item.count > 1 && <b className="arc-toast-count">{item.count}</b>}</p>
@@ -44,6 +44,7 @@ function ToastItem({ item, paused }) {
       </div>
       {item.action && <button className="arc-toast-action" type="button" onClick={handleAction}>{item.action.label}</button>}
       <button className="arc-toast-close" type="button" onClick={handleDismiss} aria-label="Dismiss notification"><X size={15} /></button>
+      {item.duration !== null && <span className="arc-toast-bar" key={item.stamp} style={{ animationDuration: item.duration + "ms" }} aria-hidden="true" />}
     </div>
   );
 }

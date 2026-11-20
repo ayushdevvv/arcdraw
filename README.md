@@ -28,14 +28,12 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Build and preview the production PWA:
+Build and preview the production app:
 
 ```powershell
 npm run build
 npm run preview
 ```
-
-The service worker is configured for production builds. The development server is not the authoritative test for offline app-shell caching.
 
 ## Backend setup
 
@@ -79,7 +77,6 @@ Google/GitHub OAuth and Brevo email delivery are optional for local development.
 - Guest identity and local Rooms library in the browser, with separate **Boards** and **Notes** library filters and **Create board** / **Create notes** actions.
 - Dedicated Board rooms with the Excalidraw canvas, local Dexie/IndexedDB autosave, import and export. The board toolbar includes image upload, drag-and-drop, clipboard paste and editable sticky-note groups.
 - Dedicated Notes rooms with a full-width Markdown writing workspace, note library, search and preview. Notes are not shown beside the canvas.
-- Production PWA shell caching for reopening the app offline after it has been loaded once.
 - Account-backed cloud Rooms.
 - Share links with viewer/editor permission and expiry/revocation.
 - Live multi-user scene synchronization using Yjs over Socket.IO. Board rooms and notes rooms use the same room identity, permissions, presence and sync path.
@@ -117,7 +114,6 @@ arcdraw/
 │   │   ├── features/
 │   │   ├── guest/
 │   │   ├── hooks/
-│   │   ├── offline/
 │   │   ├── pages/
 │   │   ├── realtime/
 │   │   └── services/
