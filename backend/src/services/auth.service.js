@@ -34,12 +34,8 @@ async function createSession(user, metadata = {}) {
   };
 }
 
-function developmentOtp(otp) {
-  return env.NODE_ENV === "development" ? otp : undefined;
-}
-
 function assertEmailDeliveryConfigured() {
-  if (env.NODE_ENV === "production" && !env.EMAIL_ENABLED) {
+  if (!env.EMAIL_ENABLED) {
     throw new ApiError(503, "Email delivery is not configured", "EMAIL_DELIVERY_NOT_CONFIGURED");
   }
 }
@@ -66,10 +62,10 @@ async function deliverVerificationOtp(user, { allowResend = false } = {}) {
 
   try {
     const delivery = await sendVerificationOtpEmail(user, otp, OTP_TTL_MINUTES);
+    if (!delivery.sent) throw new Error("Verification email was not sent");
     return {
       verificationRequired: true,
-      expiresInMinutes: OTP_TTL_MINUTES,
-      ...(delivery.sent ? {} : { developmentOtp: developmentOtp(otp) })
+      expiresInMinutes: OTP_TTL_MINUTES
     };
   } catch {
     user.emailVerificationOtpHash = undefined;
@@ -81,29 +77,48 @@ async function deliverVerificationOtp(user, { allowResend = false } = {}) {
   }
 }
 
-function assertOtpCanBeUsed(user, { hashField, expiresField, attemptsField, email, purpose, otp, label }) {
+// Each guess is counted in the database before the code is compared, so many
+// parallel guesses cannot slip past the attempt limit.
+async function consumeOtpAttempt(user, { hashField, expiresField, attemptsField, email, purpose, otp, label }) {
   const expiresAt = user[expiresField];
   if (!user[hashField] || !expiresAt || expiresAt <= new Date()) {
     throw new ApiError(400, `The ${label} code is invalid or expired`, "OTP_INVALID_OR_EXPIRED");
   }
 
-  if ((user[attemptsField] || 0) >= OTP_MAX_ATTEMPTS) {
+  const claimed = await User.updateOne(
+    { _id: user._id, [attemptsField]: { $not: { $gte: OTP_MAX_ATTEMPTS } } },
+    { $inc: { [attemptsField]: 1 } }
+  );
+  if (claimed.modifiedCount !== 1) {
     throw new ApiError(429, `Too many incorrect ${label} codes. Request a new code.`, "OTP_ATTEMPTS_EXCEEDED");
   }
 
-  return verifyOtpHash(user[hashField], hashOtp(email, purpose, otp));
+  if (!verifyOtpHash(user[hashField], hashOtp(email, purpose, otp))) {
+    throw new ApiError(400, `The ${label} code is incorrect`, "OTP_INCORRECT");
+  }
 }
 
 export async function registerWithPassword({ name, email, password }) {
   assertEmailDeliveryConfigured();
 
   const normalizedEmail = email.toLowerCase();
-  const existing = await User.findOne({ email: normalizedEmail });
-  if (existing) {
+  const existing = await User.findOne({ email: normalizedEmail }).select("+passwordHash +emailVerificationOtpSentAt");
+  if (existing && (existing.isEmailVerified || !existing.passwordEnabled)) {
     throw new ApiError(409, "An account with this email already exists", "EMAIL_ALREADY_REGISTERED");
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+
+  if (existing) {
+    // An earlier sign up was never verified. Let the same person start over,
+    // but only the inbox owner can finish it with the emailed code.
+    existing.name = name;
+    existing.passwordHash = passwordHash;
+    await existing.save();
+    await deliverVerificationOtp(existing, { allowResend: true });
+    return { user: toPublicUser(existing), verificationRequired: true, expiresInMinutes: OTP_TTL_MINUTES };
+  }
+
   const user = await User.create({
     name,
     email: normalizedEmail,
@@ -131,7 +146,7 @@ export async function verifyEmailOtp({ email, otp }, metadata) {
   // Already verified: the code was not checked in this call, so never mint a session here.
   if (user.isEmailVerified) return { user: toPublicUser(user), session: null };
 
-  const valid = assertOtpCanBeUsed(user, {
+  await consumeOtpAttempt(user, {
     hashField: "emailVerificationOtpHash",
     expiresField: "emailVerificationOtpExpiresAt",
     attemptsField: "emailVerificationOtpAttempts",
@@ -140,12 +155,6 @@ export async function verifyEmailOtp({ email, otp }, metadata) {
     otp,
     label: "verification"
   });
-
-  if (!valid) {
-    user.emailVerificationOtpAttempts = (user.emailVerificationOtpAttempts || 0) + 1;
-    await user.save();
-    throw new ApiError(400, "The verification code is incorrect", "OTP_INCORRECT");
-  }
 
   user.isEmailVerified = true;
   user.emailVerificationOtpHash = undefined;
@@ -165,20 +174,20 @@ export async function resendVerification(email) {
   );
   if (!user || user.isEmailVerified || !user.passwordEnabled) return {};
 
-  const result = await deliverVerificationOtp(user, { allowResend: true });
-  return {
-    ...result,
-    developmentOtp: developmentOtp(result.developmentOtp)
-  };
+  return deliverVerificationOtp(user, { allowResend: true });
 }
+
+// Compared against when the account does not exist, so a wrong email takes as
+// long to answer as a wrong password.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("arcdraw-timing-guard", 12);
 
 export async function loginWithPassword({ email, password }, metadata) {
   const user = await User.findOne({ email: email.toLowerCase() }).select("+passwordHash");
+  const passwordMatches = await bcrypt.compare(password, user?.passwordHash || DUMMY_PASSWORD_HASH);
   if (!user || !user.passwordHash) {
     throw new ApiError(401, "Invalid email or password", "INVALID_CREDENTIALS");
   }
 
-  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
   if (!passwordMatches) {
     throw new ApiError(401, "Invalid email or password", "INVALID_CREDENTIALS");
   }
@@ -273,9 +282,9 @@ export async function requestPasswordReset(email) {
 
   try {
     const delivery = await sendPasswordResetOtpEmail(user, otp, OTP_TTL_MINUTES);
+    if (!delivery.sent) throw new Error("Password reset email was not sent");
     return {
-      expiresInMinutes: OTP_TTL_MINUTES,
-      ...(delivery.sent ? {} : { developmentOtp: developmentOtp(otp) })
+      expiresInMinutes: OTP_TTL_MINUTES
     };
   } catch {
     user.passwordResetOtpHash = undefined;
@@ -297,7 +306,7 @@ export async function resetPasswordWithOtp({ email, otp, password }) {
     throw new ApiError(400, "The password reset code is invalid or expired", "OTP_INVALID_OR_EXPIRED");
   }
 
-  const valid = assertOtpCanBeUsed(user, {
+  await consumeOtpAttempt(user, {
     hashField: "passwordResetOtpHash",
     expiresField: "passwordResetOtpExpiresAt",
     attemptsField: "passwordResetOtpAttempts",
@@ -306,12 +315,6 @@ export async function resetPasswordWithOtp({ email, otp, password }) {
     otp,
     label: "password reset"
   });
-
-  if (!valid) {
-    user.passwordResetOtpAttempts = (user.passwordResetOtpAttempts || 0) + 1;
-    await user.save();
-    throw new ApiError(400, "The password reset code is incorrect", "OTP_INCORRECT");
-  }
 
   user.passwordHash = await bcrypt.hash(password, 12);
   user.passwordEnabled = true;

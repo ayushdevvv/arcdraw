@@ -32,7 +32,11 @@ app.use(enforceAllowedOrigin);
 app.use(express.json({ limit: "16mb" }));
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use(cookieParser());
-app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+// Log the path only. Sign in callbacks carry one time codes in the query string.
+morgan.token("safe-url", (req) => String(req.originalUrl || req.url).split("?")[0]);
+app.use(morgan(env.NODE_ENV === "production"
+  ? ':remote-addr - :remote-user [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'
+  : ":method :safe-url :status :response-time ms"));
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({

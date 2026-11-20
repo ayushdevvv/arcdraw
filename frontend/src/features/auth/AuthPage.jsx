@@ -57,7 +57,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [developmentOtp, setDevelopmentOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(function () {
@@ -151,8 +150,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     try {
       const result = await register({ name: name.trim(), email: pendingEmail, password });
       sessionStorage.setItem(PENDING_EMAIL_KEY, pendingEmail);
-      setDevelopmentOtp(result.developmentOtp || "");
-      setOtp(result.developmentOtp || "");
       startResendCooldown();
       go("verify");
       setNotice("Verification email sent. Check your inbox.");
@@ -192,7 +189,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       const result = await verifyEmailOtp({ email: pendingEmail, otp });
       sessionStorage.removeItem(PENDING_EMAIL_KEY);
       sessionStorage.removeItem(RESEND_AT_KEY);
-      setDevelopmentOtp("");
       setPassword("");
       setOtp("");
       if (result.signedIn && result.user) {
@@ -216,10 +212,8 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     setBusy(true);
     try {
       const result = await resendVerificationOtp(pendingEmail);
-      setDevelopmentOtp(result.developmentOtp || "");
-      setOtp(result.developmentOtp || "");
       startResendCooldown();
-      setNotice(result.developmentOtp ? "A fresh code is ready." : "A fresh code is on its way. Check your inbox.");
+      setNotice("A fresh code is on its way. Check your inbox.");
     } catch (cause) {
       setError(friendlyError(cause));
     } finally {
@@ -235,8 +229,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     try {
       const result = await requestPasswordResetOtp(pendingEmail);
       sessionStorage.setItem(RESET_EMAIL_KEY, pendingEmail);
-      setDevelopmentOtp(result.developmentOtp || "");
-      setOtp(result.developmentOtp || "");
       go("reset");
       setNotice("If that account exists, a code is on its way.");
     } catch (cause) {
@@ -261,7 +253,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       setPassword("");
       setConfirmPassword("");
       setOtp("");
-      setDevelopmentOtp("");
       go("login");
       setNotice("Password updated. Sign in with your new password.");
     } catch (cause) {
@@ -317,11 +308,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
         <span>{busy ? busyLabel : label}</span>
       </button>
     );
-  }
-
-  function renderDevOtp() {
-    if (!developmentOtp) return null;
-    return <div className="ax-devotp"><span>Development code</span><strong>{developmentOtp}</strong></div>;
   }
 
   return (
@@ -392,7 +378,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
                 <button type="button" className="ax-link" onClick={goRegister}>Change</button>
               </div>
               <OtpInput value={otp} onChange={setOtp} disabled={busy} />
-              {renderDevOtp()}
               {renderSubmit("Verify email", "Verifying", otp.length !== 8)}
               <div className="ax-resend">
                 <span>No code?</span>
@@ -413,7 +398,6 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
             <form className="ax-form" onSubmit={handleReset}>
               {renderEmailField()}
               <OtpInput value={otp} onChange={setOtp} disabled={busy} autoFocus={false} />
-              {renderDevOtp()}
               {renderPasswordField("New password", "new-password", password, onPassword, "At least 8 characters", true)}
               {renderPasswordField("Confirm password", "new-password", confirmPassword, onConfirm, "Repeat password", false)}
               {renderSubmit("Update password", "Updating", otp.length !== 8)}

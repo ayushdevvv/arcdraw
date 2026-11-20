@@ -61,7 +61,6 @@ export const register = asyncHandler(async (req, res) => {
     user: result.user,
     verificationRequired: true,
     expiresInMinutes: result.expiresInMinutes,
-    ...(result.developmentOtp ? { developmentOtp: result.developmentOtp } : {})
   });
 });
 
@@ -92,8 +91,7 @@ export const resendVerification = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     message: "If an unverified account exists for that email, a new code has been sent.",
-    ...(result.expiresInMinutes ? { expiresInMinutes: result.expiresInMinutes } : {}),
-    ...(result.developmentOtp ? { developmentOtp: result.developmentOtp } : {})
+    ...(result.expiresInMinutes ? { expiresInMinutes: result.expiresInMinutes } : {})
   });
 });
 
@@ -137,8 +135,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     message: "If an account exists for that email, a password reset code has been sent.",
-    ...(result.expiresInMinutes ? { expiresInMinutes: result.expiresInMinutes } : {}),
-    ...(result.developmentOtp ? { developmentOtp: result.developmentOtp } : {})
+    ...(result.expiresInMinutes ? { expiresInMinutes: result.expiresInMinutes } : {})
   });
 });
 

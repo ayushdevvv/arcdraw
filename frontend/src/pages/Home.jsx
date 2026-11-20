@@ -39,7 +39,7 @@ function BoardMock() {
             return <span key={index} className={index === 0 ? "on" : ""}><Icon size={18} strokeWidth={1.7} /></span>;
           })}
         </div>
-        <div className="hp-cursor hp-cursor-a"><svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1 16 13 9.4 14.2 6 20Z" /></svg><span>Maya</span></div>
+        <div className="hp-cursor hp-cursor-a"><svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1 16 13 9.4 14.2 6 20Z" /></svg><span>Aman</span></div>
         <div className="hp-cursor hp-cursor-b"><svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 1 16 13 9.4 14.2 6 20Z" /></svg><span>You</span></div>
       </div>
     </div>

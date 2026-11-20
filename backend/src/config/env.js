@@ -48,7 +48,7 @@ const envSchema = z.object({
   MAIL_FROM_NAME: z.string().min(1).default("ArcDraw"),
   MAIL_FROM_EMAIL: z.string().email().default("no-reply@example.com"),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
-  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   AI_API_KEY: optionalString,
   AI_API_BASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   AI_MODEL: z.string().default("openai/gpt-oss-120b"),
@@ -102,6 +102,14 @@ if (values.COOKIE_SAME_SITE === "none" && !values.COOKIE_SECURE) {
 if (values.NODE_ENV === "production" && !values.COOKIE_SECURE) {
   console.error("COOKIE_SECURE must be true in production (HTTPS required).");
   process.exit(1);
+}
+
+if (values.NODE_ENV === "production") {
+  // Stop the app from starting with the sample secrets from .env.example.
+  if (/replace-with|changeme|change-me|secret-at-least/i.test(values.JWT_ACCESS_SECRET) || (values.OTP_HASH_SECRET && /replace-with|changeme|change-me|secret-at-least/i.test(values.OTP_HASH_SECRET))) {
+    console.error("JWT_ACCESS_SECRET and OTP_HASH_SECRET must be random values, not the sample text.");
+    process.exit(1);
+  }
 }
 
 if (values.NODE_ENV === "production") {

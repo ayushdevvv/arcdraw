@@ -16,7 +16,7 @@ async function start() {
     console.log(`[server] Environment: ${env.NODE_ENV}`);
     console.log(`[server] Google OAuth: ${env.GOOGLE_OAUTH_ENABLED ? "configured" : "not configured"}`);
     console.log(`[server] GitHub OAuth: ${env.GITHUB_OAUTH_ENABLED ? "configured" : "not configured"}`);
-    console.log(`[server] Email delivery: ${env.EMAIL_ENABLED ? "configured" : "development mode / not configured"}`);
+    console.log(`[server] Email delivery: ${env.EMAIL_ENABLED ? "configured" : "not configured"}`);
     console.log("[server] Live collaboration: Socket.IO enabled");
   });
 }

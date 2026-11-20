@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as authController from "../controllers/auth.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
-import { authRateLimiter, sensitiveAuthRateLimiter } from "../middlewares/rate-limit.middleware.js";
+import { authRateLimiter, sensitiveAuthRateLimiter, loginAccountRateLimiter, refreshRateLimiter } from "../middlewares/rate-limit.middleware.js";
 import { env } from "../config/env.js";
 
 const router = Router();
@@ -22,9 +22,9 @@ router.get("/providers", (req, res) => {
 router.post("/register", authRateLimiter, authController.register);
 router.post("/verify-email", sensitiveAuthRateLimiter, authController.verifyEmailOtp);
 router.post("/resend-verification", sensitiveAuthRateLimiter, authController.resendVerification);
-router.post("/login", authRateLimiter, authController.login);
+router.post("/login", authRateLimiter, loginAccountRateLimiter, authController.login);
 router.post("/logout", authController.logout);
-router.post("/refresh", authRateLimiter, authController.refresh);
+router.post("/refresh", refreshRateLimiter, authController.refresh);
 router.get("/me", requireAuth, authController.me);
 router.get("/socket-ticket", requireAuth, authController.createSocketTicket);
 router.post("/logout-all", requireAuth, authController.logoutAll);

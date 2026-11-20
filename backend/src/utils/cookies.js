@@ -5,15 +5,16 @@ function baseCookieOptions() {
   return {
     httpOnly: true,
     secure: env.COOKIE_SECURE,
-    sameSite: env.COOKIE_SAME_SITE,
+    // The browser only talks to the API through the frontend origin, so these
+    // cookies are first party. Lax blocks cross site requests from carrying them.
+    sameSite: "lax",
     ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {})
   };
 }
 
-// OAuth provider round-trips are cross-site top-level navigations. Use the
-// explicit Chromium-compatible setting in HTTPS deployments; local HTTP keeps
-// Lax because browsers reject SameSite=None without Secure.
-const oauthSameSite = env.COOKIE_SECURE ? "none" : "lax";
+// OAuth provider round-trips come back as top level GET navigations, which
+// Lax cookies are sent on.
+const oauthSameSite = "lax";
 
 export function setAuthCookies(res, { accessToken, refreshToken }) {
   res.cookie(AUTH_COOKIE_NAMES.access, accessToken, {

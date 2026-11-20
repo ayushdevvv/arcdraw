@@ -20,7 +20,7 @@ The React account UI is implemented in `frontend/src/features/auth/AuthPage.jsx`
 - `GET /api/v1/auth/providers` advertises whether Google and GitHub OAuth are configured. It returns booleans only, never client secrets.
 - `AuthProvider` checks `/auth/me` on startup and attempts `/auth/refresh` if the access cookie has expired.
 - Access and refresh tokens are not stored in localStorage or sessionStorage.
-- `AuthPage` calls the existing email OTP endpoints and only displays `developmentOtp` when the backend returns that development-only field.
+- `AuthPage` calls the email OTP endpoints. Codes are only ever delivered by email and are never returned in an API response.
 
 ## Guest behavior
 
@@ -34,4 +34,4 @@ Guest boards remain in IndexedDB under the existing guest ID. Signing in does no
 4. Start the client from `frontend/`.
 5. Open `http://localhost:5173/#/auth/login`.
 
-Without OAuth credentials, social buttons are intentionally hidden. Without Brevo configured in development, the backend can return `developmentOtp`; production requires a valid Brevo API key and verified sender.
+Without OAuth credentials, social buttons are intentionally hidden. Email codes need Brevo configured in every environment, including local development.

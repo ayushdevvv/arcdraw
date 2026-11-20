@@ -35,11 +35,11 @@ export function errorHandler(error, req, res, next) {
     success: false,
     error: {
       code,
-      message: statusCode >= 500 && env.NODE_ENV === "production"
+      message: statusCode >= 500 && env.NODE_ENV !== "development"
         ? "Something went wrong. Please try again."
         : error.message || "Internal server error",
       ...(error.details ? { details: error.details } : {}),
-      ...(env.NODE_ENV !== "production" && statusCode >= 500 ? { stack: error.stack } : {})
+      ...(env.NODE_ENV === "development" && statusCode >= 500 ? { stack: error.stack } : {})
     }
   });
 }

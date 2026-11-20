@@ -109,6 +109,20 @@ export async function resolveGitHubUser(code, codeVerifier) {
       if (user.githubId && user.githubId !== githubId) {
         throw new ApiError(409, "This email is linked to another GitHub account", "GITHUB_ACCOUNT_CONFLICT");
       }
+      if (!user.isEmailVerified) {
+        // The email was never proven when the password was set. Drop that password
+        // so whoever registered first cannot keep a way into this account.
+        user.passwordHash = undefined;
+        user.passwordEnabled = false;
+        user.emailVerificationOtpHash = undefined;
+        user.emailVerificationOtpExpiresAt = undefined;
+        user.emailVerificationOtpSentAt = undefined;
+        user.emailVerificationOtpAttempts = 0;
+        user.passwordResetOtpHash = undefined;
+        user.passwordResetOtpExpiresAt = undefined;
+        user.passwordResetOtpSentAt = undefined;
+        user.passwordResetOtpAttempts = 0;
+      }
       user.githubId = githubId;
       user.githubUsername = profile.login || null;
       user.isEmailVerified = true;

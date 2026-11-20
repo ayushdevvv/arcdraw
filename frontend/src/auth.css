@@ -61,8 +61,6 @@
 .ax-sent { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px dashed #d4d4d8; border-radius: 12px; background: #fafafa; font-size: 13px; font-weight: 700; color: #3f3f46; }
 .ax-sent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ax-resend { display: flex; align-items: center; justify-content: center; gap: 8px; color: #71717a; font-size: 13px; font-weight: 600; }
-.ax-devotp { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; border-radius: 12px; font-size: 12px; font-weight: 700; }
-.ax-devotp strong { font: 800 15px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .2em; }
 .ax-guest { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 18px; padding: 14px 0 0; border: 0; border-top: 1px solid #e4e4e7; background: transparent; color: #52525b; font-size: 13px; font-weight: 800; cursor: pointer; }
 .ax-guest:hover { color: #18181b; }
 .ax-foot { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid #e4e4e7; text-align: center; color: #71717a; font-size: 12.5px; font-weight: 600; }
@@ -106,7 +104,6 @@ html[data-theme="dark"] .ax-submit:hover:not(:disabled) { background: #e4e4e7; b
 html[data-theme="dark"] .ax-ghost { border-color: #3f3f46; color: #a1a1aa; }
 html[data-theme="dark"] .ax-ghost:hover { border-color: #fafafa; color: #fafafa; }
 html[data-theme="dark"] .ax-sent { background: #09090b; border-color: #3f3f46; color: #d4d4d8; }
-html[data-theme="dark"] .ax-devotp { background: #251c05; border-color: #78350f; color: #fcd34d; }
 html[data-theme="dark"] .ax-guest { color: #a1a1aa; }
 html[data-theme="dark"] .ax-guest:hover { color: #fafafa; }
 html[data-theme="dark"] .otp-box { background: #09090b; border-color: #3f3f46; color: #fafafa; caret-color: #fafafa; }
