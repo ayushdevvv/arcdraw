@@ -1,0 +1,99 @@
+/* Popups, side tools and team chat. Loaded last so it wins over older rules. */
+
+/* ---------- Centered popups (every dialog that used to slide in) ---------- */
+.drawer-scrim { background: var(--backdrop); backdrop-filter: blur(5px); }
+.drawer {
+  top: 50%; left: 50%; right: auto; bottom: auto; width: min(560px, calc(100vw - 24px)); min-width: 0; max-height: min(88vh, 780px);
+  transform: translate(-50%, -50%); border-radius: 20px;
+  box-shadow: 0 34px 90px -22px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .03) inset;
+  animation: popup-in .3s cubic-bezier(.16, 1, .3, 1);
+}
+.drawer.drawer-sm { width: min(440px, calc(100vw - 24px)); }
+.drawer.is-closing { animation: popup-out .18s ease-in forwards; }
+.drawer-head { gap: 12px; padding: 18px 16px 12px 20px; }
+.drawer-icon { width: 38px; height: 38px; border-radius: 10px; }
+.drawer-titles h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+.drawer-titles p { margin-top: 2px; font-size: 12.5px; }
+.drawer-close { width: 30px; height: 30px; border-radius: 8px; }
+.drawer-body { padding: 4px 20px 18px; }
+.drawer-foot { justify-content: center; gap: 8px; padding: 10px 20px 18px; border-top: 0; background: transparent; }
+.drawer-foot .primary-button, .drawer-foot .secondary-button { height: 38px; padding: 0 18px; border-radius: 4px; font-size: 13.5px; font-weight: 700; }
+.drawer-field textarea, .drawer-input, .drawer-field select { border-radius: 10px; font-size: 14px; }
+.drawer-note { padding: 11px 13px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.drawer .share-permission-grid { gap: 8px; }
+.drawer .share-permission-option { padding: 14px; border-radius: 12px; }
+.drawer .share-permission-option.selected { box-shadow: none; }
+.drawer .share-permission-icon { width: 32px; height: 32px; border-radius: 9px; }
+.drawer .share-permission-option strong { font-size: 14px; }
+.drawer .share-permission-option small { font-size: 12.5px; line-height: 1.45; }
+@keyframes popup-in { from { opacity: 0; transform: translate(-50%, -47%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes popup-out { to { opacity: 0; transform: translate(-50%, -48%) scale(.97); } }
+@keyframes popup-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .drawer { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; transform: none; animation: popup-up .3s cubic-bezier(.16, 1, .3, 1); }
+  .drawer.drawer-sm { width: auto; }
+  .drawer.is-closing { animation: popup-out-mobile .18s ease-in forwards; }
+  @keyframes popup-out-mobile { to { opacity: 0; transform: translateY(16px); } }
+}
+
+/* ---------- Right side tools (agent, studio, project) as centered popups ---------- */
+.room-panel-agent, .room-panel-studio, .room-panel-project {
+  top: 50%; left: 50%; right: auto; bottom: auto; width: min(900px, 94vw); height: min(680px, 88vh); min-width: 0;
+  transform: translate(-50%, -50%); border-radius: 20px; box-shadow: 0 34px 90px -22px rgba(0, 0, 0, .7);
+  animation: popup-in .3s cubic-bezier(.16, 1, .3, 1);
+}
+.room-panel-project { width: min(820px, 94vw); }
+@media (max-width: 700px) {
+  .room-panel-agent, .room-panel-studio, .room-panel-project { top: 8px; left: 8px; right: 8px; bottom: 8px; width: auto; height: auto; transform: none; animation: popup-up .3s cubic-bezier(.16, 1, .3, 1); }
+}
+
+/* ---------- Dock ---------- */
+.room-dock { gap: 4px; padding: 8px 6px; border-radius: 24px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: 0 20px 50px -18px rgba(0, 0, 0, .6); }
+.room-dock-btn { width: 42px; height: 42px; border-radius: 14px; color: var(--text-2); transition: background .15s ease, color .15s ease, transform .15s ease; }
+.room-dock-btn:hover:not(:disabled) { background: var(--bg-muted); color: var(--text); transform: translateY(-1px); }
+.room-dock-btn.is-active { background: var(--bg-muted); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.room-dock-sep { display: block; width: 20px; height: 1px; margin: 4px auto; background: var(--line-strong); }
+
+/* ---------- Team chat: floating beside the dock ---------- */
+.sheet-scrim.is-clear { background: transparent; backdrop-filter: none; pointer-events: none; animation: none; }
+.room-panel-discussion {
+  top: 50%; right: 84px; bottom: auto; left: auto; width: 304px; height: min(470px, 68vh); min-width: 0;
+  transform: translateY(-50%); border-radius: 18px; box-shadow: 0 30px 70px -24px rgba(0, 0, 0, .7);
+  animation: chat-in .3s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes chat-in { from { opacity: 0; transform: translateY(-50%) translateX(14px) scale(.97); } to { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); } }
+.room-panel .room-discussion-panel { background: var(--surface); border: 0; box-shadow: none; }
+.room-panel .discussion-head { min-height: 0; padding: 14px 12px 8px 16px; gap: 9px; border: 0; }
+.room-panel .discussion-live { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .2); }
+.room-panel .discussion-head h2 { flex: 1; margin: 0; color: var(--text); font-size: 13px; font-weight: 700; letter-spacing: 0; }
+.room-panel .discussion-head h2 em { margin-left: 6px; color: var(--text-3); font-style: normal; font-weight: 500; }
+.room-panel .discussion-head h2 em::before { content: "· "; }
+.room-panel .discussion-close { width: 28px; height: 28px; border-radius: 8px; }
+.room-panel .discussion-tabs { gap: 4px; padding: 0 12px 8px; border: 0; }
+.room-panel .discussion-tabs button { height: 28px; gap: 6px; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.room-panel .discussion-tabs button.active { border-color: var(--line-strong); background: var(--bg-muted); color: var(--text); }
+.room-panel .discussion-feed { gap: 8px; padding: 4px 12px 12px; }
+.room-panel .discussion-message { display: block; padding: 9px 11px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-subtle); }
+.room-panel .discussion-message.mine { border-color: var(--line-strong); background: var(--bg-muted); }
+.room-panel .discussion-message-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.room-panel .discussion-message-meta strong { color: var(--text-2); font-size: 11.5px; font-weight: 700; }
+.room-panel .discussion-message-meta time { color: var(--text-3); font-size: 10.5px; }
+.room-panel .discussion-message p { margin: 3px 0 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+.room-panel .discussion-empty { margin: auto; }
+.room-panel .discussion-composer { display: flex; align-items: center; gap: 8px; padding: 10px 12px 12px; border: 0; background: transparent; }
+.room-panel .discussion-composer input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px; outline: none; transition: border-color .15s ease; }
+.room-panel .discussion-composer input:focus { border-color: var(--ink); }
+.room-panel .discussion-composer button { flex: none; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 8px; background: var(--ink); color: var(--on-ink); cursor: pointer; transition: opacity .15s ease, transform .15s ease; }
+.room-panel .discussion-composer button:hover:not(:disabled) { transform: translateY(-1px); }
+.room-panel .discussion-composer button:disabled { opacity: .35; cursor: default; }
+@media (max-width: 700px) {
+  .room-panel-discussion { top: auto; right: 8px; left: 8px; bottom: 70px; width: auto; height: 58vh; transform: none; animation: popup-up .3s cubic-bezier(.16, 1, .3, 1); }
+}
+@media (prefers-reduced-motion: reduce) { .drawer, .room-panel-discussion, .room-panel-agent, .room-panel-studio, .room-panel-project { animation: none; } }
+.room-panel .discussion-day { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; color: var(--text-3); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.room-panel .discussion-day::before, .room-panel .discussion-day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* The agent brings its own full screen overlay, so its wrapper takes no space. */
+.room-panel-agent { position: static; width: 0; height: 0; min-width: 0; border: 0; border-radius: 0; background: none; box-shadow: none; transform: none; overflow: visible; animation: none; }
+.ag-sheet { width: min(1120px, 100%); height: min(740px, 100%); border-radius: 20px; }
+.room-dock-btn.is-active::before, .room-dock-btn.is-active::after { display: none; }

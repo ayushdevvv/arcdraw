@@ -128,6 +128,9 @@ export default function App() {
         user={user}
         isAuthenticated={isAuthenticated}
         joinRequestCount={joinInbox.requests.length}
+        joinRequests={joinInbox.requests}
+        resolvingJoinId={joinInbox.resolvingId}
+        onResolveJoinRequest={joinInbox.resolve}
         onOpenJoinRequests={() => setJoinInboxOpen(true)}
       />
     ) : <div className="editor-loading">Opening your room…</div>;

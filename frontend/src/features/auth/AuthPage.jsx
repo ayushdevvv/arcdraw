@@ -270,7 +270,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
   function goLogin() { go("login"); }
   function goRegister() { go("register"); }
   function goForgot() { go("forgot"); }
-  function goHome() { navigate("/"); }
+  function goHome() { if (onGuest) onGuest(); else navigate("/workspace"); }
 
   function renderEmailField() {
     return (
@@ -316,7 +316,7 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
       <header className="ax-top">
         <a className="brand-lockup" href="#/" aria-label="Arcdraw home"><ArcMark /><span>arcdraw</span></a>
         <div className="ax-top-right">
-          <button className="ax-home" type="button" onClick={goHome}><House size={15} /> Home</button>
+          <button className="ax-home" type="button" onClick={goHome}><House size={15} /> Dashboard</button>
           <ThemeToggle compact />
         </div>
       </header>

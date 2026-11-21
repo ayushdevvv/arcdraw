@@ -15,6 +15,7 @@ import "./home.css";
 import "./workspace.css";
 import "./editor.css";
 import "./polish.css";
+import "./ui-refresh.css";
 import { removeOldServiceWorker } from "./utils/removeOldServiceWorker.js";
 
 removeOldServiceWorker();

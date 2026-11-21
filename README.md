@@ -1,11 +1,13 @@
 # Arcdraw
 
-Arcdraw is a visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use the LangGraph-powered Design Agent to turn prompts into editable canvas compositions. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
+**Current milestone: Arcdraw web-first workspace preview (v0.12.0).**
+
+Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use the LangGraph-powered Design Agent to turn prompts into editable canvas compositions. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
 
 The repository contains two **independent npm projects**:
 
-- `frontend/` :React JSX, Vite, Excalidraw, Dexie/IndexedDB, Yjs and Socket.IO client.
-- `backend/` : Express, MongoDB/Mongoose, email OTP, Google/GitHub OAuth, Socket.IO and Yjs persistence.
+- `frontend/` — React JSX, Vite, Excalidraw, Dexie/IndexedDB, Yjs and Socket.IO client.
+- `backend/` — Express, MongoDB/Mongoose, email OTP, Google/GitHub OAuth, Socket.IO and Yjs persistence.
 
 There is deliberately **no root `package.json`, no root `node_modules` and no npm workspaces**. Install dependencies inside `frontend/` and `backend/` separately.
 

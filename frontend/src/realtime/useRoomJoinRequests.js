@@ -85,6 +85,7 @@ export function useRoomJoinRequests(user) {
         });
         socket.on("room:join-request:resolved", (result) => {
           if (!result?.requestId) return;
+          window.dispatchEvent(new CustomEvent("arcdraw:join-resolved", { detail: result }));
           setRequests((current) => current.filter((item) => item.id !== result.requestId));
         });
       } catch (cause) {

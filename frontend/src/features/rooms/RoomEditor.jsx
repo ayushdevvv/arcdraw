@@ -32,6 +32,7 @@ import {
   updateBoardVisibility, joinBoard
 } from "../../services/boardCloudService.js";
 import { toast } from "../../components/toast/toastStore.js";
+import PeoplePopover from "../collaboration/PeoplePopover.jsx";
 import { friendlyError } from "../../utils/errors.js";
 import ModeDrawer from "../collaboration/ModeDrawer.jsx";
 import ReviewDrawer from "../collaboration/ReviewDrawer.jsx";
@@ -122,7 +123,8 @@ function inferComponentProperties(elements = []) {
   return properties.slice(0, 40);
 }
 
-export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, onSignIn, user, isAuthenticated = false, joinRequestCount = 0, onOpenJoinRequests }) {
+export default function RoomEditor({ guestId, boardId, shareToken = null, onBack, onAccountRequired, onSignIn, user, isAuthenticated = false, joinRequestCount = 0, joinRequests = [], resolvingJoinId = "", onResolveJoinRequest, onOpenJoinRequests }) {
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [isPhone, setIsPhone] = useState(function () { return typeof window !== "undefined" && window.matchMedia("(max-width: 599px)").matches; });
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -292,6 +294,31 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
   const isOwner = collab.status === "connected" ? collab.role === "owner" : (board?.permission === "owner" || !board?.permission);
   roleRef.current = isOwner ? "owner" : collab.role;
   const inDraft = collab.draftState === "draft";
+
+  // Requests for this room show in the profile popover. The rest stay in the inbox.
+  const roomJoinRequests = isOwner ? joinRequests.filter(function (item) { return String(item.board?.id) === String(cloudBoardId); }) : [];
+  const otherJoinRequestCount = isOwner ? joinRequests.length - roomJoinRequests.length : 0;
+  function togglePeople() { setPeopleOpen(function (open) { return !open; }); }
+  function closePeople() { setPeopleOpen(false); }
+  function openAllRequests() { setPeopleOpen(false); onOpenJoinRequests?.(); }
+  function handleResolveRoomRequest(request, decision) { return onResolveJoinRequest?.(request, decision); }
+
+  // The person who asked is told the moment the owner decides.
+  useEffect(function () {
+    function handleResolved(event) {
+      const result = event.detail;
+      if (!result || String(result.boardId) !== String(cloudBoardId) || roleRef.current === "owner") return;
+      if (result.status === "approved") {
+        toast.success("The owner approved you. Opening the editor.");
+        window.setTimeout(function () { window.location.reload(); }, 1200);
+      } else if (result.status === "rejected") {
+        setBoard(function (current) { return current ? { ...current, joinStatus: "rejected" } : current; });
+        toast.error("The owner declined your request to join.");
+      }
+    }
+    window.addEventListener("arcdraw:join-resolved", handleResolved);
+    return function () { window.removeEventListener("arcdraw:join-resolved", handleResolved); };
+  }, [cloudBoardId]);
   const draftTotal = collab.draftSummary?.total || 0;
 
   // Owner: how many requests wait. Editor: do I already have one waiting.
@@ -1412,7 +1439,20 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
         </button>
       )}
       {!shareToken && !isAuthenticated && <button className="room-signin-tab" type="button" onClick={requireAgentAccount}><LogIn size={14} /> <span className="rt-label">Sign in</span></button>}
-      {isAuthenticated && <button className="room-profile-inbox" type="button" onClick={onOpenJoinRequests} aria-label={`Open profile and room requests${joinRequestCount ? `, ${joinRequestCount} pending` : ""}`} title="Profile and room requests"><span className="room-profile-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : (user?.name || user?.email || "A").slice(0, 1).toUpperCase()}</span>{joinRequestCount > 0 && <b>{joinRequestCount > 9 ? "9+" : joinRequestCount}</b>}</button>}
+      {isAuthenticated && <div className="room-people"><button className="room-profile-inbox" type="button" onClick={togglePeople} data-people-trigger aria-expanded={peopleOpen} aria-haspopup="dialog" aria-label={`Open profile and room requests${joinRequestCount ? `, ${joinRequestCount} pending` : ""}`} title="People and room requests"><span className="room-profile-avatar">{user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : (user?.name || user?.email || "A").slice(0, 1).toUpperCase()}</span>{joinRequestCount > 0 && <b>{joinRequestCount > 9 ? "9+" : joinRequestCount}</b>}</button>{peopleOpen && (
+        <PeoplePopover
+          me={{ id: user?.id || "me", name: user?.name || user?.email || "You", role: isOwner ? "Owner" : readOnly ? "Viewer" : "Editor" }}
+          participants={collab.participants}
+          requests={roomJoinRequests}
+          otherRequestCount={otherJoinRequestCount}
+          isOwner={isOwner}
+          busyId={resolvingJoinId}
+          colorFor={cursorColor}
+          onResolve={handleResolveRoomRequest}
+          onOpenAll={openAllRequests}
+          onClose={closePeople}
+        />
+      )}</div>}
       {!readOnly && <button className="room-share" type="button" onClick={openShare}><Share2 size={15} /> <span className="rt-label">Share</span></button>}
       <Menu renderTrigger={renderMoreTrigger} items={menuItems} width={244} label="Room menu" />
     </div>
@@ -1850,8 +1890,8 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
 
   const panelNode = rightPanel ? (
     <>
-    <button className="sheet-scrim" type="button" aria-label="Close panel" onClick={closePanel} />
-    <div className="room-panel">
+    <button className={"sheet-scrim" + (rightPanel === "discussion" ? " is-clear" : "")} type="button" aria-label="Close panel" onClick={closePanel} />
+    <div className={"room-panel room-panel-" + rightPanel}>
       {rightPanel === "discussion" && (
         <DiscussionPanel
           messages={discussion.messages}
