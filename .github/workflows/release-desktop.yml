@@ -1,0 +1,59 @@
+name: Build and publish ArcDraw Desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Verify release tag matches desktop version
+        shell: pwsh
+        run: |
+          $version = (Get-Content desktop/package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match desktop/package.json version v$version"
+          }
+
+      - name: Install web dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build the bundled ArcDraw renderer
+        working-directory: frontend
+        run: npm run build:desktop
+
+      - name: Install Electron packaging dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build and publish ArcDraw Setup.exe
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:win -- --publish always
+
+      - name: Keep a copy of the installer as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcDraw-Setup-${{ github.ref_name }}
+          path: desktop/dist/ArcDraw-Setup.exe
+          if-no-files-found: error
+          retention-days: 30

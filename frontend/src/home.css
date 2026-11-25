@@ -175,6 +175,13 @@
 @media (max-width: 960px) { .hp-desk { grid-template-columns: 1fr; } .hp-desk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .hp-desk-grid { grid-template-columns: 1fr; } .hp-win-body { height: 210px; } .hp-win-status span:last-child { display: none; } }
 
+/* Desktop download CTA */
+.hp-desktop-download { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: fit-content; margin-top: 24px; text-decoration: none; }
+.hp-desktop-download:hover { transform: translateY(-1px); }
+.hp-platform small { color: var(--text-3); }
+.hp-platform:first-child small { color: var(--accent, #3d9d78); }
+@media (max-width: 640px) { .hp-desktop-download { width: 100%; } }
+
 /* Feature drawer */
 .hp-drawer-hero .hp-art { margin: 0; min-height: 190px; width: 100%; }
 .hp-points { display: grid; gap: 10px; }

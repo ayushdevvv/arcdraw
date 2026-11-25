@@ -3,7 +3,7 @@ import {
   Menu, X, Eraser, Hand, ListChecks, MousePointer2, NotebookText, Presentation,
   Share2, Shapes, SquareKanban, Square, Circle, Type, Users, WandSparkles,
   Layers, GitPullRequest, GitCommitHorizontal, Eye, Zap, Check, WifiOff, Video, Mic, RefreshCw,
-  Command, Terminal, FolderOpen, Bell, Keyboard
+  Command, Terminal, FolderOpen, Bell, Keyboard, Download
 } from "lucide-react";
 import ArcMark from "../components/ArcMark.jsx";
 import Drawer from "../components/Drawer.jsx";
@@ -78,12 +78,12 @@ const STEPS = [
 ];
 
 const DESKTOP_FEATURES = [
-  { icon: WifiOff, title: "Offline editor", text: "Keep drawing and writing with no connection. Your work waits on your computer." },
-  { icon: RefreshCw, title: "Background sync", text: "Changes sync on their own the moment you are back online, with no merge headaches." },
-  { icon: Video, title: "Voice and video", text: "Talk through a board with your team without leaving the room." },
-  { icon: FolderOpen, title: "Local files", text: "Open and save boards and notes straight from your own folders." },
-  { icon: Keyboard, title: "Quick capture", text: "A global shortcut drops a new note or board from any app." },
-  { icon: Bell, title: "Native alerts", text: "Get desktop notifications for mentions, reviews and merged changes." }
+  { icon: WifiOff, title: "Offline workspace", text: "Open rooms already saved on this computer and keep working without a connection." },
+  { icon: RefreshCw, title: "Automatic reconnection", text: "Local Yjs changes stay on-device and are sent when the room reconnects." },
+  { icon: Shapes, title: "The full ArcDraw canvas", text: "Use the same boards, notes, design agent, collaboration and project tools." },
+  { icon: FolderOpen, title: "Persistent local library", text: "Your downloaded rooms and notes remain available between app launches." },
+  { icon: Users, title: "Your existing account", text: "Sign in with ArcDraw and access rooms you own or have joined." },
+  { icon: Bell, title: "Desktop experience", text: "A dedicated Windows app with native menus, secure session storage and notifications." }
 ];
 
 function WindowsIcon({ size = 18 }) {
@@ -98,10 +98,13 @@ function WindowsIcon({ size = 18 }) {
 }
 
 const PLATFORMS = [
-  { name: "Windows", icon: WindowsIcon },
-  { name: "macOS", icon: Command },
-  { name: "Linux", icon: Terminal }
+  { name: "Windows", icon: WindowsIcon, status: "Download" },
+  { name: "macOS", icon: Command, status: "Planned" },
+  { name: "Linux", icon: Terminal, status: "Planned" }
 ];
+
+const DESKTOP_DOWNLOAD_URL = import.meta.env.VITE_DESKTOP_DOWNLOAD_URL
+  || "https://github.com/ayushdevvv/arcdraw/releases/latest/download/ArcDraw-Setup.exe";
 
 function DesktopMock() {
   return (
@@ -308,9 +311,12 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
       <section className="hp-section hp-section-alt" id="hp-soon" aria-label="Desktop app">
         <div className="hp-desk">
           <div className="hp-desk-copy">
-            <span className="hp-eyebrow">Coming soon</span>
-            <h2>Arcdraw for desktop.</h2>
-            <p>Arcdraw is a web app today. A native app is on the way, so your boards and notes work with or without a connection.</p>
+            <span className="hp-eyebrow">Windows app</span>
+            <h2>ArcDraw, beyond the browser.</h2>
+            <p>Take your collaborative workspace to desktop. Download rooms for local access, keep editing offline and sync your Yjs changes when you're connected again.</p>
+            <a className="primary-button hp-big hp-desktop-download" href={DESKTOP_DOWNLOAD_URL}>
+              <Download size={17} /> Download for Windows
+            </a>
             <div className="hp-platforms">
               {PLATFORMS.map(function (platform) {
                 const PlatformIcon = platform.icon;
@@ -318,7 +324,7 @@ export default function Home({ onContinue, onSignIn, hasGuestSession, user }) {
                   <span className="hp-platform" key={platform.name}>
                     <PlatformIcon size={18} />
                     <b>{platform.name}</b>
-                    <small>Soon</small>
+                    <small>{platform.status}</small>
                   </span>
                 );
               })}

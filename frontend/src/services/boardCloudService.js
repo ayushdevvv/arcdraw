@@ -1,5 +1,15 @@
 import { apiRequest } from "./apiClient.js";
 
+export async function listMyCloudBoards() {
+  const result = await apiRequest("/boards");
+  return result.data.boards || [];
+}
+
+export async function getCloudBoard(boardId) {
+  const result = await apiRequest(`/boards/${encodeURIComponent(boardId)}`);
+  return result.data;
+}
+
 export async function createCloudBoard({ title, kind = "board", visibility = "private", sourceLocalId, scene, notes = [], projectItems = [] }) {
   const result = await apiRequest("/boards", {
     method: "POST",

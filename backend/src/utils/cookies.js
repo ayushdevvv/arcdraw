@@ -111,8 +111,8 @@ function clearOAuthAttemptCookie(res, provider, state, callbackPath) {
 const googleCallbackPath = `${AUTH_PATH}/google/callback`;
 const githubCallbackPath = `${AUTH_PATH}/github/callback`;
 
-export function setGoogleOAuthCookies(res, { state, nonce, codeVerifier }, maxAge) {
-  setOAuthAttemptCookie(res, "google", state, { state, nonce, codeVerifier }, googleCallbackPath, maxAge);
+export function setGoogleOAuthCookies(res, { state, nonce, codeVerifier, desktopRedirectUri = null }, maxAge) {
+  setOAuthAttemptCookie(res, "google", state, { state, nonce, codeVerifier, desktopRedirectUri }, googleCallbackPath, maxAge);
 }
 
 export function getGoogleOAuthCookies(req) {
@@ -123,8 +123,8 @@ export function clearGoogleOAuthCookies(res, state) {
   clearOAuthAttemptCookie(res, "google", state, googleCallbackPath);
 }
 
-export function setGitHubOAuthCookies(res, { state, codeVerifier }, maxAge) {
-  setOAuthAttemptCookie(res, "github", state, { state, codeVerifier }, githubCallbackPath, maxAge);
+export function setGitHubOAuthCookies(res, { state, codeVerifier, desktopRedirectUri = null }, maxAge) {
+  setOAuthAttemptCookie(res, "github", state, { state, codeVerifier, desktopRedirectUri }, githubCallbackPath, maxAge);
 }
 
 export function getGitHubOAuthCookies(req) {

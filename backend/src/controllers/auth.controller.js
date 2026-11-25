@@ -1,4 +1,7 @@
 import { env } from "../config/env.js";
+import { randomBytes } from "node:crypto";
+import User from "../models/User.model.js";
+import DesktopAuthCode from "../models/DesktopAuthCode.model.js";
 import { AUTH_COOKIE_NAMES, OAUTH_COOKIE_MAX_AGE_MS } from "../constants/auth.constants.js";
 import * as authService from "../services/auth.service.js";
 import { createGoogleAuthorization, resolveGoogleUser } from "../services/google-oauth.service.js";
@@ -14,7 +17,7 @@ import {
   setGitHubOAuthCookies
 } from "../utils/cookies.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { safeStringEqual } from "../utils/crypto.js";
+import { safeStringEqual, hashToken } from "../utils/crypto.js";
 import { createSocketToken } from "../services/token.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendLoginNotificationEmail } from "../services/mail.service.js";
@@ -42,13 +45,53 @@ async function sendLoginNotice(user, provider) {
 }
 
 const authFailureUrl = (provider) => `${env.CLIENT_URL}/?authError=${encodeURIComponent(provider)}`;
+const DESKTOP_AUTH_CODE_TTL_MS = 90 * 1000;
+const DESKTOP_REDIRECT_PATH = "/oauth/callback";
 
-const sendSession = (res, session, statusCode = 200) => {
+function isDesktopClient(req) {
+  return req.get("x-arcdraw-client") === "desktop";
+}
+
+function parseDesktopRedirect(value) {
+  if (typeof value !== "string" || value.length > 500) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || url.port !== "43127" || url.pathname !== DESKTOP_REDIRECT_PATH) return null;
+    if (url.username || url.password || url.hash) return null;
+    const state = url.searchParams.get("state") || "";
+    if (!/^[A-Za-z0-9_-]{32,100}$/.test(state)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function desktopCallback(redirectUri, values = {}) {
+  const safeRedirect = parseDesktopRedirect(redirectUri);
+  if (!safeRedirect) return null;
+  const url = new URL(safeRedirect);
+  if (values.code) url.searchParams.set("code", values.code);
+  if (values.error) url.searchParams.set("error", values.error);
+  return url.toString();
+}
+
+async function createDesktopHandoffCode(userId) {
+  const code = randomBytes(32).toString("base64url");
+  await DesktopAuthCode.create({
+    user: userId,
+    tokenHash: hashToken(code),
+    expiresAt: new Date(Date.now() + DESKTOP_AUTH_CODE_TTL_MS)
+  });
+  return code;
+}
+
+const sendSession = (req, res, session, statusCode = 200) => {
   setAuthCookies(res, session);
   return res.status(statusCode).json({
     success: true,
     message: "Signed in successfully",
-    user: session.user
+    user: session.user,
+    ...(isDesktopClient(req) ? { desktopSession: { accessToken: session.accessToken, refreshToken: session.refreshToken } } : {})
   });
 };
 
@@ -74,7 +117,8 @@ export const verifyEmailOtp = asyncHandler(async (req, res) => {
       success: true,
       message: "Email verified successfully",
       user,
-      signedIn: true
+      signedIn: true,
+      ...(isDesktopClient(req) ? { desktopSession: { accessToken: session.accessToken, refreshToken: session.refreshToken } } : {})
     });
   }
   return res.status(200).json({
@@ -99,18 +143,48 @@ export const login = asyncHandler(async (req, res) => {
   const input = loginSchema.parse(req.body);
   const session = await authService.loginWithPassword(input, sessionMetadata(req));
   void sendLoginNotice(session.user, "email");
-  return sendSession(res, session);
+  return sendSession(req, res, session);
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  await authService.revokeRefreshSession(req.cookies?.[AUTH_COOKIE_NAMES.refresh]);
+  await authService.revokeRefreshSession(req.body?.refreshToken || req.cookies?.[AUTH_COOKIE_NAMES.refresh]);
   clearAuthCookies(res);
   return res.status(200).json({ success: true, message: "Signed out successfully" });
 });
 
 export const refresh = asyncHandler(async (req, res) => {
   const session = await authService.rotateRefreshSession(req.cookies?.[AUTH_COOKIE_NAMES.refresh], sessionMetadata(req));
-  return sendSession(res, session);
+  return sendSession(req, res, session);
+});
+
+export const desktopRefresh = asyncHandler(async (req, res) => {
+  if (!isDesktopClient(req)) throw new ApiError(400, "Desktop session refresh is only available to the desktop client.", "DESKTOP_CLIENT_REQUIRED");
+  const refreshToken = typeof req.body?.refreshToken === "string" ? req.body.refreshToken : "";
+  const session = await authService.rotateRefreshSession(refreshToken, sessionMetadata(req));
+  res.set("Cache-Control", "no-store");
+  return res.status(200).json({
+    success: true,
+    user: session.user,
+    desktopSession: { accessToken: session.accessToken, refreshToken: session.refreshToken }
+  });
+});
+
+export const desktopExchange = asyncHandler(async (req, res) => {
+  if (!isDesktopClient(req)) throw new ApiError(400, "Desktop client header is required.", "DESKTOP_CLIENT_REQUIRED");
+  const code = typeof req.body?.code === "string" ? req.body.code : "";
+  if (!/^[A-Za-z0-9_-]{32,100}$/.test(code)) throw new ApiError(400, "Desktop sign-in code is invalid.", "DESKTOP_CODE_INVALID");
+  const handoff = await DesktopAuthCode.findOneAndDelete({ tokenHash: hashToken(code), expiresAt: { $gt: new Date() } });
+  if (!handoff) throw new ApiError(401, "Desktop sign-in code expired or was already used. Start again.", "DESKTOP_CODE_EXPIRED");
+  const user = await User.findById(handoff.user);
+  if (!user) throw new ApiError(401, "Account not found.", "USER_NOT_FOUND");
+  const session = await authService.createSessionForUser(user, sessionMetadata(req));
+  void sendLoginNotice(session.user, "desktop OAuth");
+  res.set("Cache-Control", "no-store");
+  return res.status(200).json({
+    success: true,
+    user: session.user,
+    desktopSession: { accessToken: session.accessToken, refreshToken: session.refreshToken }
+  });
 });
 
 export const me = asyncHandler(async (req, res) => {
@@ -147,53 +221,62 @@ export const resetPassword = asyncHandler(async (req, res) => {
 });
 
 export const googleStart = asyncHandler(async (req, res) => {
+  const requestedDesktopRedirect = req.query?.desktop_redirect;
+  const desktopRedirectUri = requestedDesktopRedirect ? parseDesktopRedirect(requestedDesktopRedirect) : null;
+  if (requestedDesktopRedirect && !desktopRedirectUri) return res.redirect(302, authFailureUrl("google"));
   try {
     const authorization = await createGoogleAuthorization();
-    // Store each attempt in its own short-lived HTTP-only cookie. This avoids a
-    // MongoDB write/read race and allows multiple provider tabs to stay isolated.
-    setGoogleOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
+    setGoogleOAuthCookies(res, { ...authorization, desktopRedirectUri }, OAUTH_COOKIE_MAX_AGE_MS);
     return res.redirect(302, authorization.url);
   } catch (error) {
     console.warn("[auth:oauth] Google authorization could not start:", error?.code || error?.message || error);
-    return res.redirect(302, authFailureUrl("google"));
+    const target = desktopCallback(desktopRedirectUri, { error: "oauth_unavailable" });
+    return res.redirect(302, target || authFailureUrl("google"));
   }
 });
 
 export async function googleCallback(req, res) {
   const state = typeof req.query?.state === "string" ? req.query.state : "";
   const attempt = getGoogleOAuthCookies(req);
-  // Consume the browser-side attempt before exchanging the code. A replay or
-  // second callback cannot reuse the same state/verifier pair.
   clearGoogleOAuthCookies(res, state);
-
+  const desktopRedirectUri = attempt?.desktopRedirectUri || null;
   try {
     if (req.query?.error) {
-      return res.redirect(302, authFailureUrl("google"));
+      const target = desktopCallback(desktopRedirectUri, { error: String(req.query.error).slice(0, 80) });
+      return res.redirect(302, target || authFailureUrl("google"));
     }
     const code = req.query?.code;
     if (!attempt || !safeStringEqual(state, attempt.state) || !attempt.nonce || !attempt.codeVerifier || typeof code !== "string") {
       throw new ApiError(400, "Google sign-in state validation failed", "GOOGLE_STATE_INVALID");
     }
-
     const user = await resolveGoogleUser(code, attempt.nonce, attempt.codeVerifier);
+    if (desktopRedirectUri) {
+      const handoffCode = await createDesktopHandoffCode(user._id);
+      return res.redirect(302, desktopCallback(desktopRedirectUri, { code: handoffCode }));
+    }
+    void sendLoginNotice(user, "Google");
     const session = await authService.createSessionForUser(user, sessionMetadata(req));
-    void sendLoginNotice(session.user, "Google");
     setAuthCookies(res, session);
     return res.redirect(302, `${env.CLIENT_URL}/?signedIn=google`);
   } catch (error) {
     console.warn("[auth:oauth] Google callback did not complete:", error?.code || error?.message || error);
-    return res.redirect(302, authFailureUrl("google"));
+    const target = desktopCallback(desktopRedirectUri, { error: "oauth_failed" });
+    return res.redirect(302, target || authFailureUrl("google"));
   }
 }
 
 export const githubStart = asyncHandler(async (req, res) => {
+  const requestedDesktopRedirect = req.query?.desktop_redirect;
+  const desktopRedirectUri = requestedDesktopRedirect ? parseDesktopRedirect(requestedDesktopRedirect) : null;
+  if (requestedDesktopRedirect && !desktopRedirectUri) return res.redirect(302, authFailureUrl("github"));
   try {
     const authorization = createGitHubAuthorization();
-    setGitHubOAuthCookies(res, authorization, OAUTH_COOKIE_MAX_AGE_MS);
+    setGitHubOAuthCookies(res, { ...authorization, desktopRedirectUri }, OAUTH_COOKIE_MAX_AGE_MS);
     return res.redirect(302, authorization.url);
   } catch (error) {
     console.warn("[auth:oauth] GitHub authorization could not start:", error?.code || error?.message || error);
-    return res.redirect(302, authFailureUrl("github"));
+    const target = desktopCallback(desktopRedirectUri, { error: "oauth_unavailable" });
+    return res.redirect(302, target || authFailureUrl("github"));
   }
 });
 
@@ -201,23 +284,28 @@ export async function githubCallback(req, res) {
   const state = typeof req.query?.state === "string" ? req.query.state : "";
   const attempt = getGitHubOAuthCookies(req);
   clearGitHubOAuthCookies(res, state);
-
+  const desktopRedirectUri = attempt?.desktopRedirectUri || null;
   try {
     if (req.query?.error) {
-      return res.redirect(302, authFailureUrl("github"));
+      const target = desktopCallback(desktopRedirectUri, { error: String(req.query.error).slice(0, 80) });
+      return res.redirect(302, target || authFailureUrl("github"));
     }
     const code = req.query?.code;
     if (!attempt || !safeStringEqual(state, attempt.state) || !attempt.codeVerifier || typeof code !== "string") {
       throw new ApiError(400, "GitHub sign-in state validation failed", "GITHUB_STATE_INVALID");
     }
-
     const user = await resolveGitHubUser(code, attempt.codeVerifier);
+    if (desktopRedirectUri) {
+      const handoffCode = await createDesktopHandoffCode(user._id);
+      return res.redirect(302, desktopCallback(desktopRedirectUri, { code: handoffCode }));
+    }
+    void sendLoginNotice(user, "GitHub");
     const session = await authService.createSessionForUser(user, sessionMetadata(req));
-    void sendLoginNotice(session.user, "GitHub");
     setAuthCookies(res, session);
     return res.redirect(302, `${env.CLIENT_URL}/?signedIn=github`);
   } catch (error) {
     console.warn("[auth:oauth] GitHub callback did not complete:", error?.code || error?.message || error);
-    return res.redirect(302, authFailureUrl("github"));
+    const target = desktopCallback(desktopRedirectUri, { error: "oauth_failed" });
+    return res.redirect(302, target || authFailureUrl("github"));
   }
 }

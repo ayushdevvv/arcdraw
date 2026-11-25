@@ -91,6 +91,36 @@ function boardDto(board, role) {
   };
 }
 
+export const listMyCloudBoards = asyncHandler(async (req, res) => {
+  const userId = req.auth.userId;
+  const boards = await Board.find({
+    $or: [
+      { owner: userId },
+      { "members.user": userId }
+    ]
+  }).sort({ updatedAt: -1 }).limit(200).lean();
+
+  const items = boards.map((board) => {
+    const isOwner = String(board.owner) === String(userId);
+    const membership = (board.members || []).find((entry) => String(entry.user) === String(userId));
+    return {
+      id: String(board._id),
+      title: board.title,
+      kind: board.kind || "board",
+      visibility: board.visibility || "private",
+      workMode: board.workMode || "live",
+      owner: String(board.owner),
+      role: isOwner ? "owner" : (membership?.role || "viewer"),
+      createdAt: board.createdAt,
+      updatedAt: board.updatedAt,
+      lastCommitAt: board.lastCommitAt
+    };
+  });
+
+  res.set("Cache-Control", "no-store");
+  res.json({ success: true, data: { boards: items } });
+});
+
 export const createCloudBoard = asyncHandler(async (req, res) => {
   const parsed = createBoardSchema.safeParse(req.body);
   if (!parsed.success) throw new ApiError(400, "Invalid board payload.", "BOARD_PAYLOAD_INVALID", parsed.error.flatten());

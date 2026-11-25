@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./apiClient.js";
+import { API_BASE_URL, apiFetch } from "./apiClient.js";
 
 function createStreamError(message, extra = {}) {
   const error = new Error(message || "The Design Agent could not complete this request.");
@@ -14,7 +14,7 @@ export async function generateRoomDesign(prompt, roomContext, { onProgress, sign
   signal?.addEventListener("abort", abortFromCaller, { once: true });
   try {
     function postDesign() {
-      return fetch(`${API_BASE_URL}/agent/design`, {
+      return apiFetch(`${API_BASE_URL}/agent/design`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
@@ -25,7 +25,7 @@ export async function generateRoomDesign(prompt, roomContext, { onProgress, sign
     let response = await postDesign();
     if (response.status === 401) {
       // The short lived access token may have expired. Refresh once and retry before giving up.
-      const refreshed = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include", signal: controller.signal }).catch(() => null);
+      const refreshed = await apiFetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include", signal: controller.signal }).catch(() => null);
       if (refreshed?.ok) response = await postDesign();
     }
 

@@ -13,7 +13,9 @@
     "prebuild": "npm run copy:assets",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check:react": "npm ls react react-dom"
+    "check:react": "npm ls react react-dom",
+    "build:desktop": "vite build --mode desktop",
+    "prebuild:desktop": "npm run copy:assets"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

@@ -21,6 +21,10 @@ function bootstrapAccountSession() {
           return await refreshAccountSession();
         } catch (refreshError) {
           if (refreshError.status === 401) return { user: null };
+          if (window.arcDesktop?.isDesktop && (refreshError.code === "NETWORK" || refreshError.code === "NETWORK_OFFLINE" || refreshError.code === "TIMEOUT" || !navigator.onLine)) {
+            const cachedUser = await window.arcDesktop.getStoredUser().catch(() => null);
+            if (cachedUser) return { user: cachedUser, offline: true };
+          }
           throw refreshError;
         }
       }
@@ -33,7 +37,7 @@ function bootstrapAccountSession() {
 
 /**
  * Account state is backed by HTTP-only cookies. Tokens never enter localStorage.
- * Guest drafts remain in the separate guest/IndexedDB system until migration is built.
+ * Guest drafts and downloaded cloud rooms live in the local IndexedDB workspace.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -49,11 +53,16 @@ export function AuthProvider({ children }) {
         setUser(result.user || null);
         setStatus(result.user ? "authenticated" : "anonymous");
       })
-      .catch(() => {
-        // The app remains usable as a guest when the API is unavailable.
+      .catch(async () => {
         if (!active) return;
-        setUser(null);
-        setStatus("anonymous");
+        // A desktop install can reopen the last signed-in workspace while
+        // offline. Its profile is stored in Electron's OS-encrypted vault.
+        const cachedUser = window.arcDesktop?.isDesktop
+          ? await window.arcDesktop.getStoredUser().catch(() => null)
+          : null;
+        if (!active) return;
+        setUser(cachedUser || null);
+        setStatus(cachedUser ? "authenticated" : "anonymous");
       });
 
     return () => { active = false; };
@@ -95,6 +104,11 @@ export function AuthProvider({ children }) {
     try {
       await logoutRequest();
     } catch {
+      // A desktop sign-out also clears the OS-encrypted session when offline,
+      // so the cached profile is not silently restored at the next launch.
+      if (window.arcDesktop?.isDesktop) {
+        try { await window.arcDesktop.clearStoredSession?.(); } catch { /* local logout still completes */ }
+      }
       // Local guest work is retained even when the API is unavailable.
     } finally {
       setUser(null);

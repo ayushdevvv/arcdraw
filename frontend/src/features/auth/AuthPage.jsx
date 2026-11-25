@@ -48,7 +48,7 @@ function friendlyError(error) {
 }
 
 export default function AuthPage({ route, navigate, onGuest, redirectTo = null, allowGuest = true }) {
-  const { signIn, completeSignIn, isAuthenticated, isLoading } = useAuth();
+  const { signIn, completeSignIn, refreshUser, isAuthenticated, isLoading } = useAuth();
   const [view, setView] = useState(function () { return initialView(route); });
   const [name, setName] = useState("");
   const [email, setEmail] = useState(function () {
@@ -128,15 +128,31 @@ export default function AuthPage({ route, navigate, onGuest, redirectTo = null, 
     sessionStorage.setItem(POST_AUTH_KEY, redirectTo || sessionStorage.getItem(POST_AUTH_KEY) || "/workspace");
   }
 
-  function handleGoogle() {
+  async function handleProviderLogin(provider) {
     rememberReturnRoute();
-    startGoogleLogin();
+    if (!window.arcDesktop?.isDesktop) {
+      if (provider === "google") startGoogleLogin();
+      else startGitHubLogin();
+      return;
+    }
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (provider === "google") await startGoogleLogin();
+      else await startGitHubLogin();
+      const nextUser = await refreshUser();
+      if (!nextUser) throw new Error("The desktop sign-in completed, but the account session could not be restored. Please try again.");
+      toast.success(provider === "google" ? "Signed in with Google." : "Signed in with GitHub.", { duration: AUTH_TOAST_MS });
+    } catch (cause) {
+      setError(cause?.message || `${provider === "google" ? "Google" : "GitHub"} sign in didn't complete. Please try again.`);
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function handleGitHub() {
-    rememberReturnRoute();
-    startGitHubLogin();
-  }
+  function handleGoogle() { void handleProviderLogin("google"); }
+  function handleGitHub() { void handleProviderLogin("github"); }
 
   async function handleRegister(event) {
     event.preventDefault();

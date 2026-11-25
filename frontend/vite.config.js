@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  base: "/",
   // Keep all React imports on the single client-local React installation.
   // This matters for libraries that render React elements, including Excalidraw and Lucide.
   resolve: {

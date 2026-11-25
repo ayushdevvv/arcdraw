@@ -39,13 +39,32 @@ export function useRoomJoinRequests(user) {
 
     let active = true;
     let socket = null;
+    let connecting = false;
+    let retryTimer = null;
+    let retryDelay = 3000;
+
+    const scheduleReconnect = () => {
+      if (!active || retryTimer || !navigator.onLine) return;
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        void connectInbox();
+      }, retryDelay);
+      retryDelay = Math.min(Math.round(retryDelay * 1.7), 15000);
+    };
 
     void refresh();
 
     async function connectInbox() {
+      if (!active || connecting || socket?.connected) return;
+      connecting = true;
       try {
         const ticket = await getSocketTicket();
         if (!active || !ticket?.socketToken) return;
+        if (socket) {
+          socket.auth = { socketToken: ticket.socketToken };
+          socket.connect();
+          return;
+        }
         socket = io(SOCKET_URL, {
           withCredentials: false,
           auth: { socketToken: ticket.socketToken },
@@ -58,9 +77,16 @@ export function useRoomJoinRequests(user) {
         });
 
         let renewingTicket = false;
-        socket.on("connect", () => { void refresh(); });
+        socket.on("connect", () => {
+          retryDelay = 3000;
+          void refresh();
+        });
+        socket.on("disconnect", () => scheduleReconnect());
         socket.on("connect_error", async (socketError) => {
-          if (renewingTicket || !/sign in|credential|session/i.test(socketError?.message || "")) return;
+          if (renewingTicket || !/sign in|credential|session/i.test(socketError?.message || "")) {
+            scheduleReconnect();
+            return;
+          }
           renewingTicket = true;
           try {
             const renewed = await getSocketTicket();
@@ -69,7 +95,7 @@ export function useRoomJoinRequests(user) {
               socket.connect();
             }
           } catch {
-            // The HTTP inbox remains available; a fresh app session can restore live alerts.
+            scheduleReconnect();
           } finally {
             renewingTicket = false;
           }
@@ -81,7 +107,14 @@ export function useRoomJoinRequests(user) {
             return next.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
           });
           const requester = request.user?.name || request.user?.email || "Someone";
-          toast.info(`${requester} requested to join ${request.board.title || "your room"}.`);
+          const roomTitle = request.board.title || "your room";
+          toast.info(`${requester} requested to join ${roomTitle}.`);
+          if (window.arcDesktop?.isDesktop && typeof window.arcDesktop.notify === "function") {
+            void window.arcDesktop.notify({
+              title: "New room request",
+              body: `${requester} requested to join ${roomTitle}.`
+            }).catch(() => {});
+          }
         });
         socket.on("room:join-request:resolved", (result) => {
           if (!result?.requestId) return;
@@ -90,12 +123,24 @@ export function useRoomJoinRequests(user) {
         });
       } catch (cause) {
         if (active) setError(cause?.message || "Room request notifications are unavailable.");
+        scheduleReconnect();
+      } finally {
+        connecting = false;
       }
     }
 
+    const onOnline = () => {
+      void refresh();
+      if (socket && !socket.connected) socket.connect();
+      else if (!socket) void connectInbox();
+    };
+
     void connectInbox();
+    window.addEventListener("online", onOnline);
     return () => {
       active = false;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      window.removeEventListener("online", onOnline);
       socket?.removeAllListeners();
       socket?.disconnect();
     };

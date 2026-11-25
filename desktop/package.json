@@ -1,0 +1,88 @@
+{
+  "name": "arcdraw-desktop",
+  "version": "0.15.5",
+  "private": true,
+  "description": "ArcDraw desktop workspace",
+  "type": "module",
+  "main": "src/main.mjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev:renderer": "npm --prefix ../frontend run dev",
+    "build:renderer": "npm --prefix ../frontend run build:desktop",
+    "start": "npm run build:renderer && electron .",
+    "start:app": "electron .",
+    "dist:win": "electron-builder --win nsis --x64",
+    "dist:win:portable": "electron-builder --win portable --x64",
+    "dist:linux": "electron-builder --linux AppImage --x64",
+    "dist:mac": "electron-builder --mac dmg --x64 --arm64"
+  },
+  "dependencies": {
+    "http-proxy": "1.18.1",
+    "electron-updater": "6.8.12"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "com.arcdraw.desktop",
+    "productName": "ArcDraw",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend-dist",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "artifactName": "ArcDraw-Setup.exe",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ayushdevvv",
+        "repo": "arcdraw",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "icon": "assets/arcdraw.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ArcDraw",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "category": "Office",
+      "target": [
+        "AppImage"
+      ]
+    }
+  }
+}

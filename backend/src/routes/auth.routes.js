@@ -25,6 +25,8 @@ router.post("/resend-verification", sensitiveAuthRateLimiter, authController.res
 router.post("/login", authRateLimiter, loginAccountRateLimiter, authController.login);
 router.post("/logout", authController.logout);
 router.post("/refresh", refreshRateLimiter, authController.refresh);
+router.post("/desktop/refresh", refreshRateLimiter, authController.desktopRefresh);
+router.post("/desktop/exchange", sensitiveAuthRateLimiter, authController.desktopExchange);
 router.get("/me", requireAuth, authController.me);
 router.get("/socket-ticket", requireAuth, authController.createSocketTicket);
 router.post("/logout-all", requireAuth, authController.logoutAll);

@@ -92,6 +92,9 @@ async function releaseServiceWorkers() {
 }
 
 async function leaveForProvider(provider) {
+  if (window.arcDesktop?.isDesktop && typeof window.arcDesktop.startOAuth === "function") {
+    return window.arcDesktop.startOAuth(provider);
+  }
   markOAuthPending(provider);
   await Promise.race([
     releaseServiceWorkers(),

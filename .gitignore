@@ -1,25 +1,12 @@
-# Installed packages (each project installs independently)
+node_modules/
 **/node_modules/
-
-# Local environment files and secrets
-**/.env
-**/.env.*
-!**/.env.example
-
-# Build output
 **/dist/
-**/build/
-**/coverage/
-
-# Generated Excalidraw fonts copied from npm package
-client/public/fonts/
-
-# Logs
+**/.vite/
+.env
+.env.*
+!.env.example
 *.log
-npm-debug.log*
-
-# OS / editor
 .DS_Store
 Thumbs.db
-.vscode/
-.idea/
+*.tmp
+*.vault

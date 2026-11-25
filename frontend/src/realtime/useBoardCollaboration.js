@@ -97,10 +97,19 @@ export function useBoardCollaboration({
     let observeDocumentUpdate;
     let handleLocalUpdate;
     let retryTimer = null;
+    let ticketRetryTimer = null;
+    let ticketRetryDelay = 3000;
     let recountTimer = null;
     let rejoinTimer = null;
     let retryDelay = 1200;
     let needsFullSync = false;
+    const handleNetworkOnline = () => setResetNonce((value) => value + 1);
+    const handleNetworkOffline = () => {
+      setStatus("offline");
+      setError("You're offline. Changes are saved on this device and will sync when you're back online.");
+    };
+    window.addEventListener("online", handleNetworkOnline);
+    window.addEventListener("offline", handleNetworkOffline);
     let awaitingChoice = false;
     let currentRole = startRole;
     let currentMode = initialWorkMode || "live";
@@ -270,8 +279,15 @@ export function useBoardCollaboration({
           socketToken = ticket.socketToken || null;
         } catch (ticketError) {
           if (disposed) return;
-          setStatus("error");
-          setError(ticketError?.message || "Your account session could not be verified. Please sign in again.");
+          const offline = !navigator.onLine || ticketError?.code === "NETWORK" || ticketError?.code === "NETWORK_OFFLINE" || ticketError?.code === "TIMEOUT";
+          setStatus(offline ? "offline" : "error");
+          setError(offline
+            ? "You're offline. Changes are saved on this device and will sync when you're back online."
+            : (ticketError?.message || "Your account session could not be verified. Please sign in again."));
+          ticketRetryTimer = window.setTimeout(() => {
+            if (!disposed) setResetNonce((value) => value + 1);
+          }, ticketRetryDelay);
+          ticketRetryDelay = Math.min(Math.round(ticketRetryDelay * 1.7), 15000);
           return;
         }
       }
@@ -609,6 +625,8 @@ export function useBoardCollaboration({
 
     return () => {
       disposed = true;
+      window.removeEventListener("online", handleNetworkOnline);
+      window.removeEventListener("offline", handleNetworkOffline);
       joinedRef.current = false;
       actionsRef.current = {};
       if (elementsMap && observeRemote) elementsMap.unobserve(observeRemote);
@@ -617,6 +635,7 @@ export function useBoardCollaboration({
       if (doc && observeDocumentUpdate) doc.off("update", observeDocumentUpdate);
       if (doc && handleLocalUpdate) doc.off("update", handleLocalUpdate);
       if (retryTimer) window.clearTimeout(retryTimer);
+      if (ticketRetryTimer) window.clearTimeout(ticketRetryTimer);
       window.clearTimeout(recountTimer);
       window.clearTimeout(rejoinTimer);
       socket?.disconnect();

@@ -1,6 +1,6 @@
 import { toast } from "../components/toast/toastStore.js";
 import { friendlyError } from "../utils/errors.js";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CloudUpload, Copy, Folder, FolderPlus, LayoutGrid, LogIn, LogOut,
   MoreHorizontal, NotebookPen, PanelsTopLeft, Pencil, Plus, Search, Settings2, Star,
@@ -14,13 +14,13 @@ import { useBoards } from "../database/useBoards.js";
 import { useRoomNoteCounts } from "../database/useRoomNoteCounts.js";
 import {
   createBoard, deleteBoard, duplicateBoard, importBoardFile,
-  renameBoard, toggleBoardStar, setBoardCloudLink
+  renameBoard, toggleBoardStar, setBoardCloudLink, findBoardByCloudId, updateCloudBoardMetadata
 } from "../database/boardService.js";
 import { useFolders } from "../database/useFolders.js";
 import { createFolder, deleteFolder, moveRoomToFolder, renameFolder } from "../database/folderService.js";
 import { listRoomNotes } from "../database/noteService.js";
 import { listRoomProjectItems } from "../database/projectService.js";
-import { createCloudBoard } from "../services/boardCloudService.js";
+import { createCloudBoard, listMyCloudBoards } from "../services/boardCloudService.js";
 
 function formatEdited(value) {
   if (!value) return "Just now";
@@ -130,7 +130,7 @@ function RoomCard({ board, index, noteCount, folders, onOpen, onRename, onDuplic
         </div>
       </button>
       <div className="wk-card-foot">
-        <span className={`wk-badge ${board.cloudId ? "is-cloud" : ""}`}><span />{board.cloudId ? "Cloud" : "Local"}</span>
+        <span className={`wk-badge ${board.cloudId ? "is-cloud" : ""}`}><span />{board.needsInitialCloudFetch ? "Download" : board.cloudId ? "Cloud" : "Local"}</span>
         {folder && <span className="wk-badge wk-folder-badge"><Folder size={11} />{folder.name}</span>}
         <Menu renderTrigger={renderTrigger} items={items} width={236} label={`Options for ${board.title}`} />
       </div>
@@ -170,7 +170,70 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
   const [folderName, setFolderName] = useState("");
   const [folderBusy, setFolderBusy] = useState(false);
   const [migrationBusy, setMigrationBusy] = useState(false);
+  const [cloudSyncing, setCloudSyncing] = useState(false);
+  const cloudSyncKey = useRef("");
   const importInput = useRef(null);
+
+  useEffect(() => {
+    if (!user?.id || !guestId) return undefined;
+    let active = true;
+    let running = false;
+    let retryTimer = null;
+    const syncCloudRooms = async (force = false) => {
+      const key = `${user.id}:${guestId}`;
+      if (running || (!force && cloudSyncKey.current === key) || !navigator.onLine) return;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      retryTimer = null;
+      running = true;
+      cloudSyncKey.current = key;
+      setCloudSyncing(true);
+      try {
+        const cloudRooms = await listMyCloudBoards();
+        for (const remote of cloudRooms) {
+          if (!active) return;
+          const local = await findBoardByCloudId(guestId, remote.id);
+          if (local) {
+            await updateCloudBoardMetadata(guestId, local.id, remote);
+            continue;
+          }
+          // Cache the complete room index immediately, but download each scene
+          // only when it is first opened. This keeps first sign-in fast and
+          // avoids silently downloading hundreds of large canvases.
+          await createBoard(guestId, remote.title, {
+            kind: remote.kind || "board",
+            visibility: remote.visibility || "private",
+            cloudId: remote.id,
+            permission: remote.role || "viewer",
+            workMode: remote.workMode || "live",
+            createdAt: remote.createdAt,
+            updatedAt: remote.updatedAt,
+            remoteUpdatedAt: remote.updatedAt,
+            needsInitialCloudFetch: true
+          });
+        }
+      } catch (cause) {
+        cloudSyncKey.current = "";
+        console.warn("ArcDraw cloud workspace cache could not refresh:", cause?.message || cause);
+        if (active && navigator.onLine) {
+          retryTimer = window.setTimeout(() => {
+            retryTimer = null;
+            void syncCloudRooms(true);
+          }, 12000);
+        }
+      } finally {
+        running = false;
+        if (active) setCloudSyncing(false);
+      }
+    };
+    const onOnline = () => { void syncCloudRooms(true); };
+    void syncCloudRooms();
+    window.addEventListener("online", onOnline);
+    return () => {
+      active = false;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [user?.id, guestId]);
 
   const visibleBoards = useMemo(() => rooms.filter((board) => {
     const matchesQuery = board.title.toLowerCase().includes(query.trim().toLowerCase());
@@ -437,6 +500,7 @@ export default function Workspace({ guestId, onOpenBoard, onAccountRequired, onB
             <h1>{heading}</h1>
           </div>
           <div className="wk-head-tools">
+            {cloudSyncing && <span className="wk-sync-hint" role="status">Updating cloud rooms…</span>}
             <label className="wk-search">
               <Search size={15} />
               <input value={query} onChange={handleQuery} placeholder="Search rooms" aria-label="Search rooms" />

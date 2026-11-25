@@ -11,7 +11,7 @@ import Drawer from "../../components/Drawer.jsx";
 import Menu from "../../components/Menu.jsx";
 import {
   createBoard, findBoardByCloudId, getBoard, getExportPayload,
-  renameBoard, setBoardCloudLink, updateBoardScene, updateBoardDesignStudio, updateBoardVisibilityLocal
+  renameBoard, setBoardCloudLink, updateBoardScene, updateBoardDesignStudio, updateBoardVisibilityLocal, updateCloudBoardMetadata
 } from "../../database/boardService.js";
 import { downloadBlob, safeFilename } from "../../utils/download.js";
 import { useNotes } from "../../database/useNotes.js";
@@ -28,7 +28,7 @@ import { ACCOUNT_REQUIRED_ACTIONS } from "../../guest/accountGate.js";
 import { useBoardCollaboration } from "../../realtime/useBoardCollaboration.js";
 import {
   createCloudBoard, createShareLink, createBoardCommit, restoreBoardCommit,
-  getSharedBoard, renameCloudBoard, updateBoardSettings, listProposals,
+  getSharedBoard, getCloudBoard, renameCloudBoard, updateBoardSettings, listProposals,
   updateBoardVisibility, joinBoard
 } from "../../services/boardCloudService.js";
 import { toast } from "../../components/toast/toastStore.js";
@@ -375,8 +375,26 @@ export default function RoomEditor({ guestId, boardId, shareToken = null, onBack
           appState: local.appState || remote.scene.appState
         };
       }
-      const local = await getBoard(guestId, boardId);
+      let local = await getBoard(guestId, boardId);
       if (!local) throw new Error("This room doesn't exist in this guest workspace.");
+      if (local.cloudId && local.needsInitialCloudFetch) {
+        if (!navigator.onLine) {
+          throw new Error("Connect to the internet once to download this room. After its first download, it stays available offline.");
+        }
+        const remote = await getCloudBoard(local.cloudId);
+        const scene = remote.scene || {};
+        await updateBoardScene(guestId, local.id, {
+          elements: scene.elements || [],
+          appState: scene.appState || {},
+          files: scene.files || {}
+        });
+        await updateBoardDesignStudio(guestId, local.id, scene.designStudio || { tokens: [], components: [] });
+        await mergeRoomProjectItems(guestId, local.id, scene.projectItems || []);
+        await replaceRoomNotes(guestId, local.id, scene.notes || []);
+        await updateCloudBoardMetadata(guestId, local.id, { ...(remote.board || {}), markDownloaded: true });
+        local = await getBoard(guestId, local.id);
+        local = { ...local, needsInitialCloudFetch: false, workMode: remote.board?.workMode || "live" };
+      }
       return local;
     };
 

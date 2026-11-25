@@ -62,9 +62,12 @@ export async function createBoard(guestId, title = "Untitled room", scene = {}) 
     cloudId: scene.cloudId || null,
     shareToken: scene.shareToken || null,
     permission: scene.permission || null,
-    starred: false,
-    createdAt: now,
-    updatedAt: now
+    workMode: scene.workMode === "commit" ? "commit" : "live",
+    remoteUpdatedAt: scene.remoteUpdatedAt || scene.updatedAt || null,
+    needsInitialCloudFetch: Boolean(scene.needsInitialCloudFetch),
+    starred: Boolean(scene.starred),
+    createdAt: scene.createdAt || now,
+    updatedAt: scene.updatedAt || now
   };
 
   const incomingNotes = Array.isArray(scene.notes) ? scene.notes : [];
@@ -112,7 +115,24 @@ export async function setBoardCloudLink(guestId, boardId, cloudId, shareToken = 
     cloudId,
     shareToken: shareToken || null,
     permission: permission || board.permission || null,
+    needsInitialCloudFetch: false,
     updatedAt: new Date().toISOString()
+  });
+}
+
+
+export async function updateCloudBoardMetadata(guestId, boardId, metadata = {}) {
+  const board = await getBoard(guestId, boardId);
+  if (!board) throw new Error("Room not found.");
+  await db.boards.update(boardId, {
+    cloudId: String(metadata.id || metadata.cloudId || board.cloudId || ""),
+    title: String(metadata.title || board.title).trim().slice(0, 100) || board.title,
+    kind: metadata.kind === "notes" ? "notes" : (metadata.kind === "board" ? "board" : board.kind),
+    visibility: metadata.visibility === "public" ? "public" : (metadata.visibility === "private" ? "private" : board.visibility),
+    workMode: metadata.workMode === "commit" ? "commit" : "live",
+    permission: metadata.role || board.permission || null,
+    remoteUpdatedAt: metadata.updatedAt || board.remoteUpdatedAt || null,
+    ...(metadata.markDownloaded ? { needsInitialCloudFetch: false } : {})
   });
 }
 

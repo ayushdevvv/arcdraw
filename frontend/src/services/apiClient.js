@@ -1,15 +1,18 @@
+const desktopRuntime = typeof window !== "undefined" && window.arcDesktop?.isDesktop === true;
 const isProductionBuild = Boolean(import.meta.env.PROD);
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-// In production the frontend proxies /api/v1 to Render. This keeps auth cookies
-// first-party on mobile browsers that block cross-site cookies (notably Chrome).
-const API_BASE_URL = (isProductionBuild
+// Desktop runs the bundled frontend on a stable loopback origin. Electron's
+// local main-process server proxies /api/v1 and /socket.io, preserving local
+// IndexedDB while keeping API credentials out of the renderer.
+const API_BASE_URL = (desktopRuntime
   ? `${window.location.origin}/api/v1`
-  : configuredApiBase
+  : isProductionBuild
+    ? `${window.location.origin}/api/v1`
+    : configuredApiBase
 ).replace(/\/$/, "");
 function resolveSocketUrl() {
+  if (desktopRuntime) return window.location.origin;
   if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
-  // Reuse the previously configured API host for realtime when one exists.
-  // The REST API itself still goes through the same-origin Vercel proxy.
   if (isProductionBuild && import.meta.env.VITE_API_BASE_URL) {
     try { return new URL(import.meta.env.VITE_API_BASE_URL, window.location.origin).origin; } catch { /* use default below */ }
   }
@@ -24,19 +27,23 @@ function makeError(message, extra) {
   return error;
 }
 
+export function apiFetch(input, options = {}) {
+  // In desktop mode this remains a same-origin request to the loopback bridge.
+  // The main process adds a short-lived bearer credential to the upstream API
+  // request; renderer JavaScript never receives the refresh token.
+  return fetch(input, { ...options, credentials: options.credentials || "include" });
+}
+
 async function send(path, options, headers) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+    return await apiFetch(`${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
       ...options,
       headers,
-      credentials: "include",
       signal: controller.signal
     });
   } catch (cause) {
-    // Browsers report every network failure as a vague TypeError. Give callers a
-    // stable code so the UI can show a clear message.
     if (cause?.name === "AbortError") {
       throw makeError("The server took too long to answer. Please try again.", { code: "TIMEOUT" });
     }
@@ -48,12 +55,8 @@ async function send(path, options, headers) {
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {});
-  if (options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
+  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await send(path, options, headers);
-
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw makeError(payload.error?.message || payload.message || "Request failed", {
@@ -62,8 +65,7 @@ export async function apiRequest(path, options = {}) {
       details: payload.error?.details
     });
   }
-
   return payload;
 }
 
-export { API_BASE_URL, SOCKET_URL };
+export { API_BASE_URL, SOCKET_URL, desktopRuntime };

@@ -1,15 +1,16 @@
 # Arcdraw
 
-**Current milestone: Arcdraw web-first workspace preview (v0.12.0).**
+**Current milestone: ArcDraw web workspace v0.15.4 with Electron desktop v0.15.5.**
 
 Arcdraw is a local-first visual workspace in development: create a Board room for a dedicated shared canvas or a Notes room for a dedicated writing workspace, organize rooms into folders, plan work with Kanban/tasks/milestones, and use the LangGraph-powered Design Agent to turn prompts into editable canvas compositions. Boards and Notes open as separate full-workspace experiences, while both retain the same cloud sharing, live collaboration and Git-inspired checkpoints.
 
-The repository contains two **independent npm projects**:
+The repository contains three **independent app packages**:
 
-- `frontend/` — React JSX, Vite, Excalidraw, Dexie/IndexedDB, Yjs and Socket.IO client.
+- `frontend/` — React JSX, Vite, Excalidraw, Dexie/IndexedDB, Yjs and Socket.IO client. This is shared by the web and desktop builds.
 - `backend/` — Express, MongoDB/Mongoose, email OTP, Google/GitHub OAuth, Socket.IO and Yjs persistence.
+- `desktop/` — Electron 45 desktop shell, secure local API bridge, OS-encrypted account session, Windows installer and auto-update configuration.
 
-There is deliberately **no root `package.json`, no root `node_modules` and no npm workspaces**. Install dependencies inside `frontend/` and `backend/` separately.
+There is deliberately **no root `package.json`, no root `node_modules` and no npm workspaces**. Install dependencies inside each package separately.
 
 ## Requirements
 
@@ -119,6 +120,11 @@ arcdraw/
 │   │   └── services/
 │   ├── .env.example
 │   └── package.json
+├── desktop/                 # Electron desktop app and Windows release tooling
+│   ├── src/                  # Main process and preload bridge
+│   ├── assets/               # Windows application icon
+│   └── scripts/              # Windows build helper
+├── .github/workflows/        # Tagged Windows installer release workflow
 ├── backend/                 # Independent Express/MongoDB project
 │   ├── src/
 │   │   ├── config/
@@ -145,7 +151,12 @@ arcdraw/
 - Same-element concurrent canvas edits are whole-element last-writer-wins, not property-level merges. Component master records are updated per component; independent component records/tokens no longer share one global serialized blob.
 - Folder organization is currently local to a browser; it is not a cloud team folder hierarchy.
 - Design Agent calls send the prompt and up to 12 selected object summaries to the configured Groq-compatible AI provider. The provider key remains server-side. Review third-party provider data terms before sending confidential room content.
-- The current release is a web-first development preview. Desktop/Tauri is intentionally out of scope until the web app is stable. The production frontend build and live browser/device tests still need to be run in an environment with npm registry access. Multi-user conflict testing, cloud folder membership, asset backup recovery and multi-instance Socket.IO scaling remain release blockers.
+- The web app remains available at the normal Vercel URL. The Electron desktop app bundles the same React renderer and serves it from a stable local origin so IndexedDB, Dexie and Yjs data survive restarts and remain available offline after a room has been downloaded once.
+- Desktop REST traffic is proxied through the Electron main process to the Vercel API origin. The main process stores access/refresh credentials with Electron `safeStorage`; tokens are not exposed to renderer storage. Google and GitHub sign-in use the system browser and a one-time desktop handoff code.
+- The desktop account workspace first caches the cloud room index. Each room's complete scene is downloaded when first opened, not in bulk during sign-in. After that download, canvas edits, notes and project items persist locally. Yjs full-state sync is retried after reconnection. Presence, messaging, invitations, commits, the Design Agent and other server-dependent features still require a network connection.
+- Browser-only guest rooms on another device are not automatically copied into desktop. Sync them to the cloud from the web workspace first, then sign in to desktop.
+- Windows desktop releases are built by `.github/workflows/release-desktop.yml`. See `desktop/README.md` for local builds, the Windows installer, publishing a tagged GitHub release and offline behaviour. The first Windows installer is not Authenticode-signed; Windows may show an unknown-publisher warning.
+- Production builds and live desktop/device tests must still run in an environment with npm registry access. Multi-user conflict testing, asset backup recovery and multi-instance Socket.IO scaling remain release concerns.
 
 ## Working modes (room owner decides)
 

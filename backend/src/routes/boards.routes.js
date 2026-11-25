@@ -5,7 +5,7 @@ import {
   rejectProposalRequest, withdrawProposalRequest
 } from "../controllers/proposals.controller.js";
 import {
-  createCloudBoard, getCloudBoard, renameCloudBoard, updateBoardSettings,
+  createCloudBoard, getCloudBoard, listMyCloudBoards, renameCloudBoard, updateBoardSettings,
   createShareLink, listShareLinks, revokeShareLink, updateBoardVisibility,
   requestToJoinBoard, listJoinRequests, listOwnedJoinRequests, resolveJoinRequest,
   getCommitHistory, createCommit, restoreCommit
@@ -13,6 +13,7 @@ import {
 
 const router = express.Router();
 router.use(requireAccount);
+router.get("/", listMyCloudBoards);
 router.post("/", createCloudBoard);
 router.get("/join-requests/inbox", listOwnedJoinRequests);
 router.get("/:boardId", getCloudBoard);
