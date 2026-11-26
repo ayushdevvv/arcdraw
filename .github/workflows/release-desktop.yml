@@ -1,3 +1,4 @@
+
 name: Build and publish ArcDraw Desktop
 
 on:
@@ -56,18 +57,36 @@ jobs:
       - name: Find and normalize installer
         shell: pwsh
         run: |
-          $installer = Get-ChildItem "desktop/dist" -Filter "*.exe" -File |
+          $dist = (Resolve-Path "desktop/dist").Path
+
+          $installer = Get-ChildItem $dist -Filter "*.exe" -File |
             Where-Object { $_.Name -notmatch "uninstaller" } |
+            Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
 
           if (-not $installer) {
             throw "Windows installer was not generated."
           }
 
-          Copy-Item $installer.FullName "desktop/dist/ArcDraw-Setup.exe" -Force
+          $target = Join-Path $dist "ArcDraw-Setup.exe"
 
-          Write-Host "Installer generated successfully."
-          Get-Item "desktop/dist/ArcDraw-Setup.exe"
+          $sourcePath = [System.IO.Path]::GetFullPath($installer.FullName)
+          $targetPath = [System.IO.Path]::GetFullPath($target)
+
+          if (-not [string]::Equals(
+            $sourcePath,
+            $targetPath,
+            [System.StringComparison]::OrdinalIgnoreCase
+          )) {
+            Copy-Item $sourcePath $targetPath -Force
+          }
+
+          if (-not (Test-Path $targetPath)) {
+            throw "ArcDraw-Setup.exe was not found after normalization."
+          }
+
+          Write-Host "Installer ready:"
+          Get-Item $targetPath | Format-List Name, Length, FullName
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
