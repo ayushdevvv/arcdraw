@@ -48,7 +48,7 @@ jobs:
 
       - name: Build Windows installer
         working-directory: desktop
-        run: npx electron-builder --win nsis --x64 --publish never
+        run: npx electron-builder --win nsis --x64 --publish=never
 
       - name: Normalize installer filename
         shell: pwsh
