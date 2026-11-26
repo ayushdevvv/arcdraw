@@ -26,15 +26,18 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Verify release version
+      - name: Verify desktop release version
         shell: pwsh
         run: |
           $version = (Get-Content desktop/package.json -Raw | ConvertFrom-Json).version
+
           if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$version") {
-            throw "Tag does not match desktop version: v$version"
+            throw "Tag $env:GITHUB_REF_NAME does not match desktop version v$version"
           }
 
-      - name: Install web dependencies
+          Write-Host "Desktop version: $version"
+
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci --no-audit --no-fund
 
@@ -44,16 +47,16 @@ jobs:
 
       - name: Install Electron dependencies
         working-directory: desktop
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build Windows installer
         working-directory: desktop
         run: npx electron-builder --win nsis --x64 --publish never
 
-      - name: Normalize installer filename
+      - name: Find and normalize installer
         shell: pwsh
         run: |
-          $installer = Get-ChildItem desktop/dist -Filter "*.exe" |
+          $installer = Get-ChildItem "desktop/dist" -Filter "*.exe" -File |
             Where-Object { $_.Name -notmatch "uninstaller" } |
             Select-Object -First 1
 
@@ -63,9 +66,10 @@ jobs:
 
           Copy-Item $installer.FullName "desktop/dist/ArcDraw-Setup.exe" -Force
 
+          Write-Host "Installer generated successfully."
           Get-Item "desktop/dist/ArcDraw-Setup.exe"
 
-      - name: Upload installer artifact
+      - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: ArcDraw-Setup-${{ github.ref_name }}
